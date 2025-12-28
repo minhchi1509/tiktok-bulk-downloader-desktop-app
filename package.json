@@ -1,6 +1,6 @@
 {
   "name": "tiktok-bulk-downloader",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Tiktok Bulk Video Downloader - Desktop App for downloading multiple Tiktok videos at once.",
   "main": "./out/main/index.js",
   "author": "MinhChi1509",
@@ -10,6 +10,10 @@
     "TikTok",
     "Bulk Downloader"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/minhchi1509/tiktok-bulk-downloader-desktop-app.git"
+  },
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint --cache .",

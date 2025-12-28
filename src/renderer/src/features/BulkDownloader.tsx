@@ -37,7 +37,7 @@ const columnHelper = createColumnHelper<IAwemeItem>()
 const BulkDownloader = () => {
   const [username, setUsername] = useState('')
   const [delay, setDelay] = useState('0')
-  const [batchSize, setBatchSize] = useState('10')
+  const [batchSize, setBatchSize] = useState('15')
   const [loading, setLoading] = useState(false)
   const [userInfo, setUserInfo] = useState<IUserInfo | null>(null)
   const [posts, setPosts] = useState<IAwemeItem[]>([])

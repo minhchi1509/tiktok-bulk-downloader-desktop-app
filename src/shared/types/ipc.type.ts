@@ -28,4 +28,15 @@ export interface IpcApi {
   selectFolder: () => Promise<string | null>
   downloadFile: (options: IDownloadFileOptions) => Promise<boolean>
   getDefaultDownloadPath: () => Promise<string>
+
+  // Auto Updater
+  checkForUpdates: () => Promise<void>
+  downloadUpdate: () => Promise<void>
+  quitAndInstall: () => Promise<void>
+  onUpdateAvailable: (callback: (info: any) => void) => void
+  onUpdateDownloaded: (callback: (info: any) => void) => void
+  onDownloadProgress: (callback: (progress: any) => void) => void
+  onUpdateError: (callback: (error: any) => void) => void
+  onCheckingForUpdate: (callback: () => void) => void
+  onUpdateNotAvailable: (callback: () => void) => void
 }

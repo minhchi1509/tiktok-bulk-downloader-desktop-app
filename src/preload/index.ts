@@ -25,6 +25,35 @@ const api: IpcApi = {
   },
   getDefaultDownloadPath: () => {
     return ipcRenderer.invoke(IPC_CHANNELS.GET_DEFAULT_DOWNLOAD_PATH)
+  },
+
+  // Auto Updater
+  checkForUpdates: () => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CHECK_FOR_UPDATES)
+  },
+  downloadUpdate: () => {
+    return ipcRenderer.invoke(IPC_CHANNELS.DOWNLOAD_UPDATE)
+  },
+  quitAndInstall: () => {
+    return ipcRenderer.invoke(IPC_CHANNELS.QUIT_AND_INSTALL)
+  },
+  onUpdateAvailable: (callback) => {
+    ipcRenderer.on(IPC_CHANNELS.UPDATE_AVAILABLE, (_event, info) => callback(info))
+  },
+  onUpdateDownloaded: (callback) => {
+    ipcRenderer.on(IPC_CHANNELS.UPDATE_DOWNLOADED, (_event, info) => callback(info))
+  },
+  onDownloadProgress: (callback) => {
+    ipcRenderer.on(IPC_CHANNELS.DOWNLOAD_PROGRESS, (_event, progress) => callback(progress))
+  },
+  onUpdateError: (callback) => {
+    ipcRenderer.on(IPC_CHANNELS.UPDATE_ERROR, (_event, error) => callback(error))
+  },
+  onCheckingForUpdate: (callback) => {
+    ipcRenderer.on(IPC_CHANNELS.CHECKING_FOR_UPDATE, () => callback())
+  },
+  onUpdateNotAvailable: (callback) => {
+    ipcRenderer.on(IPC_CHANNELS.UPDATE_NOT_AVAILABLE, () => callback())
   }
 }
 

@@ -43,7 +43,9 @@ function createWindow(): void {
 
 const initializeServices = async () => {
   // Setup IPC handlers
-  setupIpcHandlers()
+  setupIpcHandlers({
+    mainWindow: () => mainWindow
+  })
 
   console.log('✅✅✅ [Main] Services initialized')
 }

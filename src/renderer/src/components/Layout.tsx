@@ -1,7 +1,8 @@
 import { ReactNode } from 'react'
 import Footer from './Footer'
-import { Button } from '@heroui/react'
-import { Moon, Sun } from 'lucide-react'
+import UpdaterHandler from './UpdaterHandler'
+import { Button, Tooltip } from '@heroui/react'
+import { Moon, Sun, RotateCw } from 'lucide-react'
 import { useTheme } from 'next-themes'
 
 interface LayoutProps {
@@ -26,6 +27,17 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
 
         <div className="flex items-center gap-2 z-10 app-no-drag">
+          <Tooltip content="Check for Updates">
+            <Button
+              isIconOnly
+              variant="light"
+              onPress={() => window.api.checkForUpdates()}
+              aria-label="Check for Updates"
+              className="text-default-500"
+            >
+              <RotateCw size={20} />
+            </Button>
+          </Tooltip>
           <Button
             isIconOnly
             variant="light"
@@ -43,6 +55,7 @@ const Layout = ({ children }: LayoutProps) => {
       </main>
 
       <Footer />
+      <UpdaterHandler />
     </div>
   )
 }
