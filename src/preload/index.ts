@@ -24,6 +24,13 @@ const api: IpcApi = {
     return ipcRenderer.invoke(IPC_CHANNELS.GET_DEFAULT_DOWNLOAD_PATH)
   },
 
+  getSettings: (key: string) => {
+    return ipcRenderer.invoke(IPC_CHANNELS.GET_SETTINGS, key)
+  },
+  saveSettings: (key: string, value: string) => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SAVE_SETTINGS, key, value)
+  },
+
   // Auto Updater
   checkForUpdates: () => {
     return ipcRenderer.invoke(IPC_CHANNELS.CHECK_FOR_UPDATES)

@@ -55,7 +55,7 @@ const getUserInfo = async (username: string): Promise<IUserInfo> => {
       avatarUri: userInfo.avatar_larger?.url_list?.[0] || ''
     }
   } catch (error) {
-    throw new Error('❌ Failed to fetch user info: ' + (error as Error).stack?.toString())
+    throw new Error('Failed to fetch user info')
   }
 }
 
@@ -120,7 +120,7 @@ const getUserAwemeList = async (
       pagination
     }
   } catch (error) {
-    throw new Error('❌ Failed to fetch user Aweme list: ' + (error as Error).stack?.toString())
+    throw new Error('Failed to fetch user aweme list')
   }
 }
 
@@ -170,7 +170,7 @@ const getAwemeDetails = async (
     })
     return tiktokUtils.formatAwemeItemResponse(responseData.aweme_detail)
   } catch (error) {
-    throw new Error('❌ Failed to fetch Aweme details: ' + (error as Error).stack?.toString())
+    throw new Error('Failed to fetch aweme details')
   }
 }
 

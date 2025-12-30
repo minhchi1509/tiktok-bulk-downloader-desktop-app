@@ -28,14 +28,16 @@ import {
   FilterFn,
   RowSelectionState
 } from '@tanstack/react-table'
-import { useState, useMemo, useRef, useCallback } from 'react'
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { IAwemeItem, IUserInfo } from '@shared/types/tiktok.type'
-import { Search, Download, FolderOpen, StopCircle, ExternalLink } from 'lucide-react'
+import { Search, Download, FolderOpen, StopCircle, ExternalLink, Save } from 'lucide-react'
+import { showErrorToast, showSuccessToast } from '@renderer/lib/toast'
 
 const columnHelper = createColumnHelper<IAwemeItem>()
 
 const BulkDownloader = () => {
   const [username, setUsername] = useState('')
+  const [sidTt, setSidTt] = useState('')
   const [delay, setDelay] = useState('0')
   const [batchSize, setBatchSize] = useState('15')
   const [loading, setLoading] = useState(false)
@@ -63,6 +65,18 @@ const BulkDownloader = () => {
   )
   const [downloading, setDownloading] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0 })
+
+  // Load sid_tt from settings
+  useEffect(() => {
+    window.api.getSettings('sid_tt').then(({ data: savedSid }) => {
+      if (savedSid) setSidTt(savedSid)
+    })
+  }, [])
+
+  const handleSaveSidTt = async () => {
+    await window.api.saveSettings('sid_tt', sidTt)
+    showSuccessToast('sid_tt saved successfully!')
+  }
 
   // Custom Filter Function
   const customFilterFn: FilterFn<IAwemeItem> = (row, columnId, filterValue) => {
@@ -266,7 +280,13 @@ const BulkDownloader = () => {
     setPageIndex(0)
 
     try {
-      const user = await window.api.getUserInfo(username)
+      const { data: user, success, error } = await window.api.getUserInfo(username)
+
+      if (!success || !user) {
+        showErrorToast(error)
+        setLoading(false)
+        return
+      }
       setUserInfo(user)
 
       let currentCursor = '0'
@@ -274,11 +294,21 @@ const BulkDownloader = () => {
       let hasMore = true
 
       while (hasMore && !isCancelGetDataRef.current) {
-        const res = await window.api.getUserAwemeList(user.secUid, {
+        const { success, data: res } = await window.api.getUserAwemeList(user.secUid, {
           cursor: currentCursor,
           maxCursor: currentMaxCursor,
-          cookie: import.meta.env.RENDERER_VITE_TIKTOK_COOKIE
+          cookie: sidTt ? `sid_tt=${sidTt}` : undefined
         })
+
+        if (!success || !res) {
+          showErrorToast('Failed to fetch user posts')
+          break
+        }
+
+        if (res.pagination.hasMore && res.awemeList.length === 0) {
+          showErrorToast('No more posts available or unable to fetch more posts.')
+          break
+        }
 
         setPosts((prev) => [...prev, ...res.awemeList])
         currentCursor = res.pagination.cursor
@@ -286,12 +316,10 @@ const BulkDownloader = () => {
         hasMore = res.pagination.hasMore
 
         // Handling delay
-        const delayMs = parseInt(delay) || 0
+        const delayMs = (parseInt(delay) || 0) * 1000
         if (delayMs > 0 && hasMore) await new Promise((r) => setTimeout(r, delayMs))
       }
     } catch (error) {
-      console.error(error)
-      alert('Failed to fetch data: ' + error)
     } finally {
       setLoading(false)
     }
@@ -299,7 +327,7 @@ const BulkDownloader = () => {
 
   // Fetch default path on mount
   useState(() => {
-    window.api.getDefaultDownloadPath().then((path) => {
+    window.api.getDefaultDownloadPath().then(({ data: path }) => {
       if (path) setFolderPath(path)
     })
   })
@@ -342,7 +370,7 @@ const BulkDownloader = () => {
 
     let currentFolderPath = folderPath
     if (!currentFolderPath) {
-      const defaultPath = await window.api.selectFolder()
+      const { data: defaultPath } = await window.api.selectFolder()
       if (!defaultPath) return
       currentFolderPath = defaultPath
       setFolderPath(currentFolderPath)
@@ -408,56 +436,34 @@ const BulkDownloader = () => {
   }
 
   const handleSelectFolder = async () => {
-    const path = await window.api.selectFolder()
+    const { data: path } = await window.api.selectFolder()
     if (path) setFolderPath(path)
   }
 
   const renderTopContent = useCallback(() => {
     return (
       <div className="flex flex-col gap-4">
-        <div className="flex justify-between items-center p-2 rounded-lg border border-divider flex-wrap gap-2">
-          <div className="flex gap-2 items-center flex-1">
-            {/* ID Search Filter */}
-            <Input
-              placeholder="Filter ID..."
-              value={(table.getColumn('id')?.getFilterValue() as string) ?? ''}
-              onValueChange={(val) => table.getColumn('id')?.setFilterValue(val)}
-              startContent={<Search size={14} />}
-              size="sm"
-              className="w-32"
-            />
-            {/* Description Search Filter */}
-            <Input
-              placeholder="Filter Description..."
-              value={(table.getColumn('description')?.getFilterValue() as string) ?? ''}
-              onValueChange={(val) => table.getColumn('description')?.setFilterValue(val)}
-              startContent={<Search size={14} />}
-              size="sm"
-              className="w-48"
-            />
-            {/* Type Filter */}
-            <Select
-              placeholder="Type"
-              size="sm"
-              className="w-24"
-              selectedKeys={[(table.getColumn('type')?.getFilterValue() as string) || 'ALL']}
-              onChange={(e) => table.getColumn('type')?.setFilterValue(e.target.value)}
-            >
-              <SelectItem key="ALL">All</SelectItem>
-              <SelectItem key="VIDEO">Video</SelectItem>
-              <SelectItem key="PHOTO">Photo</SelectItem>
-            </Select>
+        <div className="text-small text-default-500 flex items-center h-full">
+          <div className="flex flex-col gap-2">
+            <p>
+              Username: <b>{userInfo?.uniqueId || ''}</b>
+            </p>
+            <p>Total posts: {posts.length || 0}</p>
           </div>
+        </div>
 
-          {/* Download Configuration */}
+        <div className="h-divider w-full bg-divider" />
+
+        <div className="flex flex-col gap-2">
+          <div className="text-sm font-bold text-default-500">Download options:</div>
           <div className="flex gap-2 items-center">
             <Tooltip delay={0} content={folderPath} placement="top" isDisabled={!folderPath}>
               <Input
-                placeholder="Save to..."
+                label="Save Location"
                 value={folderPath}
                 readOnly
                 size="sm"
-                className="w-40"
+                className="w-64"
                 classNames={{
                   input: 'truncate'
                 }}
@@ -472,12 +478,15 @@ const BulkDownloader = () => {
             </Tooltip>
 
             <Select
-              placeholder="Filename Format"
+              label="Filename Format"
               selectionMode="multiple"
               selectedKeys={fileNameFormat}
               onSelectionChange={(keys) => setFileNameFormat(keys as Set<string>)}
               className="w-96"
               size="sm"
+              classNames={{
+                label: 'mb-2'
+              }}
               renderValue={(items) => (
                 <div className="flex flex-wrap items-center gap-1">
                   {items.map((item, index) => (
@@ -499,6 +508,56 @@ const BulkDownloader = () => {
               <SelectItem key="Timestamp">Timestamp</SelectItem>
             </Select>
 
+            <Input
+              label="Download concurrency (batch size)"
+              value={batchSize}
+              onValueChange={setBatchSize}
+              className="grow max-w-xs"
+              type="number"
+              size="sm"
+              isDisabled={loading}
+            />
+          </div>
+        </div>
+
+        <div className="h-divider w-full bg-divider" />
+
+        <div className="flex justify-between items-center flex-wrap gap-2">
+          <div className="flex gap-2 items-center flex-1">
+            {/* ID Search Filter */}
+            <Input
+              placeholder="Filter ID..."
+              value={(table.getColumn('id')?.getFilterValue() as string) ?? ''}
+              onValueChange={(val) => table.getColumn('id')?.setFilterValue(val)}
+              startContent={<Search size={14} />}
+              size="sm"
+              className="max-w-sm"
+            />
+            {/* Description Search Filter */}
+            <Input
+              placeholder="Filter Description..."
+              value={(table.getColumn('description')?.getFilterValue() as string) ?? ''}
+              onValueChange={(val) => table.getColumn('description')?.setFilterValue(val)}
+              startContent={<Search size={14} />}
+              size="sm"
+              className="max-w-sm"
+            />
+            {/* Type Filter */}
+            <Select
+              placeholder="Type"
+              size="sm"
+              className="w-24"
+              selectedKeys={[(table.getColumn('type')?.getFilterValue() as string) || 'ALL']}
+              onChange={(e) => table.getColumn('type')?.setFilterValue(e.target.value)}
+            >
+              <SelectItem key="ALL">All</SelectItem>
+              <SelectItem key="VIDEO">Video</SelectItem>
+              <SelectItem key="PHOTO">Photo</SelectItem>
+            </Select>
+          </div>
+
+          {/* Download Configuration */}
+          <div className="flex gap-2 items-center">
             <Button
               size="sm"
               color={downloading ? 'danger' : 'primary'}
@@ -528,7 +587,19 @@ const BulkDownloader = () => {
         )}
       </div>
     )
-  }, [table, folderPath, fileNameFormat, downloading, downloadProgress, rowSelection, columns])
+  }, [
+    table,
+    folderPath,
+    fileNameFormat,
+    downloading,
+    downloadProgress,
+    rowSelection,
+    columns,
+    userInfo,
+    posts.length,
+    batchSize,
+    loading
+  ])
 
   const renderBottomContent = useCallback(() => {
     return (
@@ -547,7 +618,7 @@ const BulkDownloader = () => {
 
         <Select
           size="sm"
-          className="w-24"
+          className="w-36"
           selectedKeys={[String(pageSize)]}
           onChange={(e) => setPageSize(Number(e.target.value))}
           aria-label="Rows per page"
@@ -564,62 +635,71 @@ const BulkDownloader = () => {
   return (
     <div className="flex flex-col gap-4 h-full relative p-2">
       {/* Input Section */}
-      <div className="flex gap-4 items-end bg-content1 p-4 rounded-lg shadow-sm border border-divider">
-        <Input
-          label="Username"
-          value={username}
-          onValueChange={setUsername}
-          className="max-w-xs"
-          variant="bordered"
-          size="sm"
-          isDisabled={loading}
-        />
-        <Input
-          label="Delay between fetching posts (ms)"
-          value={delay}
-          onValueChange={setDelay}
-          className="grow w-fit"
-          type="number"
-          variant="bordered"
-          size="sm"
-          isDisabled={loading}
-          placeholder="0"
-        />
-        <Input
-          label="Batch size per download"
-          value={batchSize}
-          onValueChange={setBatchSize}
-          className="grow w-fit"
-          type="number"
-          variant="bordered"
-          size="sm"
-          isDisabled={loading}
-          placeholder="10"
-        />
-        <Button
-          color={loading ? 'danger' : 'primary'}
-          onPress={handleFetchData}
-          startContent={!loading ? <Search size={18} /> : <StopCircle size={18} />}
-        >
-          {loading ? 'Stop Fetching' : 'Get Data'}
-        </Button>
-        <div className="ml-auto text-small text-default-500 flex items-center h-full">
-          {userInfo && (
-            <div className="flex gap-4">
-              <span>
-                <b>@{userInfo.uniqueId}</b>
-              </span>
-              <span>Posts: {posts.length}</span>
-            </div>
-          )}
+      <div className="flex flex-col gap-4 bg-content1 p-4 rounded-lg shadow-sm border border-divider">
+        <div className="flex gap-4 items-end">
+          <Input
+            label="Username"
+            value={username}
+            onValueChange={setUsername}
+            className="max-w-max"
+            variant="bordered"
+            size="sm"
+            isDisabled={loading}
+          />
+          <Input
+            label="sid_tt"
+            value={sidTt}
+            onValueChange={setSidTt}
+            className="max-w-md"
+            variant="bordered"
+            size="sm"
+            isDisabled={loading}
+            placeholder="Optional"
+            endContent={
+              <Tooltip content="Save sid_tt for future use">
+                <Button isIconOnly size="sm" variant="flat" onPress={handleSaveSidTt}>
+                  <Save size={16} />
+                </Button>
+              </Tooltip>
+            }
+          />
+
+          <Input
+            label="Delay between requests (seconds)"
+            value={delay}
+            onValueChange={setDelay}
+            className="grow max-w-xs"
+            type="number"
+            variant="bordered"
+            size="sm"
+            isDisabled={loading}
+            placeholder="0"
+          />
+
+          <Button
+            className="min-w-fit grow"
+            color={loading ? 'danger' : 'primary'}
+            onPress={handleFetchData}
+            startContent={!loading ? <Search size={18} /> : <StopCircle size={18} />}
+          >
+            {loading ? 'Stop' : 'Get Data'}
+          </Button>
+        </div>
+
+        <div className="flex gap-2 items-center text-tiny text-warning bg-warning-50 p-2 rounded-md border border-warning-200 dark:bg-warning-900/20 dark:border-warning-500/80">
+          <span>
+            ⚠️ Note: Provide `sid_tt` if the user has audience controls enabled (login required).
+            How to get: Login TikTok → F12 → Application → Cookies → sid_tt.
+          </span>
         </div>
       </div>
 
       {/* Main Content: HeroUI Table */}
-      <div className="flex gap-4 h-full overflow-hidden">
+      <div className="flex gap-4 h-full overflow-hidden rounded-lg shadow-sm border border-divider p-4">
         <Table
           aria-label="Bulk Downloader Table"
           isHeaderSticky
+          removeWrapper
           bottomContent={renderBottomContent()}
           bottomContentPlacement="outside"
           topContent={renderTopContent()}

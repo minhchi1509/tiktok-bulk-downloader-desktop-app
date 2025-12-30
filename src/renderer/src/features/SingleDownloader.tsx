@@ -10,11 +10,13 @@ import {
   Tooltip
 } from '@heroui/react'
 import { useState, useEffect } from 'react'
-import { FolderOpen, Download, Search } from 'lucide-react'
+import { FolderOpen, Download, Search, Save } from 'lucide-react'
 import { IAwemeItem } from '@shared/types/tiktok.type'
+import { showErrorToast } from '@renderer/lib/toast'
 
 const SingleDownloader = () => {
   const [postId, setPostId] = useState('')
+  const [sidTt, setSidTt] = useState('')
   const [folderPath, setFolderPath] = useState('')
   // Using Set for multi-select consistent with Bulk
   const [fileNameFormat, setFileNameFormat] = useState<Set<string>>(new Set(['ID']))
@@ -22,13 +24,21 @@ const SingleDownloader = () => {
   const [downloadedItem, setDownloadedItem] = useState<IAwemeItem | null>(null)
 
   useEffect(() => {
-    window.api.getDefaultDownloadPath().then((path) => {
+    window.api.getDefaultDownloadPath().then(({ data: path }) => {
       if (path) setFolderPath(path)
+    })
+    // Load sid_tt setting
+    window.api.getSettings('sid_tt').then(({ data: savedSid }) => {
+      if (savedSid) setSidTt(savedSid)
     })
   }, [])
 
+  const handleSaveSidTt = async () => {
+    await window.api.saveSettings('sid_tt', sidTt)
+  }
+
   const handleSelectFolder = async () => {
-    const path = await window.api.selectFolder()
+    const { data: path } = await window.api.selectFolder()
     if (path) setFolderPath(path)
   }
 
@@ -59,19 +69,24 @@ const SingleDownloader = () => {
     setLoading(true)
     setDownloadedItem(null)
     try {
-      const item = await window.api.getAwemeDetails(postId, {
-        cookie: import.meta.env.RENDERER_VITE_TIKTOK_COOKIE
+      const {
+        success,
+        data: item,
+        error
+      } = await window.api.getAwemeDetails(postId, {
+        cookie: sidTt ? `sid_tt=${sidTt}` : undefined
       })
 
-      if (!item) {
-        alert('Could not find video with that ID')
+      if (!success || !item) {
+        showErrorToast(error)
         setLoading(false)
         return
       }
 
       let targetFolder = folderPath
       if (!targetFolder) {
-        targetFolder = (await window.api.selectFolder()) || ''
+        targetFolder =
+          (await window.api.getDefaultDownloadPath().then(({ data: path }) => path)) || ''
         if (!targetFolder) {
           setLoading(false)
           return
@@ -100,10 +115,7 @@ const SingleDownloader = () => {
       }
 
       setDownloadedItem(item)
-      // alert('Download Successful!')
     } catch (e) {
-      console.error(e)
-      alert('Download failed: ' + e)
     } finally {
       setLoading(false)
     }
@@ -129,6 +141,31 @@ const SingleDownloader = () => {
           startContent={<Search className="text-default-400" />}
         />
 
+        <div className="flex gap-2 items-end">
+          <Input
+            label="sid_tt"
+            placeholder="Optional. Required for private/restricted content."
+            value={sidTt}
+            onValueChange={setSidTt}
+            variant="bordered"
+            size="lg"
+            className="flex-1"
+            endContent={
+              <Tooltip content="Save sid_tt for future use">
+                <Button isIconOnly size="sm" variant="flat" onPress={handleSaveSidTt}>
+                  <Save size={16} />
+                </Button>
+              </Tooltip>
+            }
+          />
+        </div>
+        <div className="flex gap-2 items-center text-tiny text-warning bg-warning-50 p-2 rounded-md border border-warning-200 dark:bg-warning-900/20 dark:border-warning-500/80">
+          <span>
+            ⚠️ Note: Provide `sid_tt` if the user has audience controls enabled (login required).
+            How to get: Login TikTok → F12 → Application → Cookies → sid_tt.
+          </span>
+        </div>
+
         <div className="flex flex-col gap-4">
           <div className="flex gap-4">
             <Tooltip delay={0} content={folderPath} placement="top" isDisabled={!folderPath}>
@@ -150,6 +187,9 @@ const SingleDownloader = () => {
           </div>
 
           <Select
+            classNames={{
+              label: 'mb-2'
+            }}
             label="Filename Format"
             selectionMode="multiple"
             selectedKeys={fileNameFormat}

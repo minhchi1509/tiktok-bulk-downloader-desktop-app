@@ -3,7 +3,8 @@ import TiktokService from '@shared/services/tiktok.service'
 import {
   IDownloadFileOptions,
   IpcGetAwemeDetailsOptions,
-  IpcGetAwemeListOptions
+  IpcGetAwemeListOptions,
+  IpcResponse
 } from '@shared/types/ipc.type'
 import { IAwemeItem, IAwemeListResponse, IUserInfo } from '@shared/types/tiktok.type'
 import { ipcMain, dialog, app, BrowserWindow } from 'electron'
@@ -27,38 +28,79 @@ const setupIpcHandlers = ({ mainWindow }: ISetupIpcHandlersOptions) => {
       _event,
       secUid: string,
       options: IpcGetAwemeListOptions
-    ): Promise<IAwemeListResponse> => {
-      return TiktokService.getUserAwemeList(secUid, options)
+    ): Promise<IpcResponse<IAwemeListResponse>> => {
+      try {
+        const data = await TiktokService.getUserAwemeList(secUid, options)
+        return {
+          success: true,
+          data
+        }
+      } catch (error) {
+        return {
+          success: false,
+          error: (error as Error).message
+        }
+      }
     }
   )
 
   ipcMain.handle(
     IPC_CHANNELS.GET_USER_INFO,
-    async (_event, username: string): Promise<IUserInfo> => {
-      return TiktokService.getUserInfo(username)
+    async (_event, username: string): Promise<IpcResponse<IUserInfo>> => {
+      try {
+        const userInfo = await TiktokService.getUserInfo(username)
+        return {
+          success: true,
+          data: userInfo
+        }
+      } catch (error) {
+        return {
+          success: false,
+          error: (error as Error).message
+        }
+      }
     }
   )
 
   ipcMain.handle(
     IPC_CHANNELS.GET_AWEME_DETAILS,
-    async (_event, awemeId: string, options?: IpcGetAwemeDetailsOptions): Promise<IAwemeItem> => {
-      return TiktokService.getAwemeDetails(awemeId, options)
+    async (
+      _event,
+      awemeId: string,
+      options?: IpcGetAwemeDetailsOptions
+    ): Promise<IpcResponse<IAwemeItem>> => {
+      try {
+        const awemeDetails = await TiktokService.getAwemeDetails(awemeId, options)
+        return {
+          success: true,
+          data: awemeDetails
+        }
+      } catch (error) {
+        return {
+          success: false,
+          error: (error as Error).message
+        }
+      }
     }
   )
 
-  ipcMain.handle(IPC_CHANNELS.SELECT_FOLDER, async (): Promise<string | null> => {
-    const { canceled, filePaths } = await dialog.showOpenDialog({
-      properties: ['openDirectory']
-    })
-    if (canceled) {
-      return null
+  ipcMain.handle(IPC_CHANNELS.SELECT_FOLDER, async (): Promise<IpcResponse<string | null>> => {
+    try {
+      const { canceled, filePaths } = await dialog.showOpenDialog({
+        properties: ['openDirectory']
+      })
+      if (canceled) {
+        return { success: true, data: null }
+      }
+      return { success: true, data: filePaths[0] }
+    } catch (error) {
+      return { success: false, error: (error as Error).message }
     }
-    return filePaths[0]
   })
 
   ipcMain.handle(
     IPC_CHANNELS.DOWNLOAD_FILE,
-    async (_event, options: IDownloadFileOptions): Promise<boolean> => {
+    async (_event, options: IDownloadFileOptions): Promise<IpcResponse<boolean>> => {
       try {
         const { url, fileName, folderPath } = options
         if (!fs.existsSync(folderPath)) {
@@ -70,17 +112,55 @@ const setupIpcHandlers = ({ mainWindow }: ISetupIpcHandlersOptions) => {
         const writer = fs.createWriteStream(filePath)
 
         await pipeline(response.data, writer)
-        return true
+        return { success: true, data: true }
       } catch (error) {
-        console.error('Download failed:', error)
-        return false
+        return { success: false, error: (error as Error).message }
       }
     }
   )
 
-  ipcMain.handle(IPC_CHANNELS.GET_DEFAULT_DOWNLOAD_PATH, async (): Promise<string> => {
-    return app.getPath('downloads')
+  ipcMain.handle(IPC_CHANNELS.GET_DEFAULT_DOWNLOAD_PATH, async (): Promise<IpcResponse<string>> => {
+    return { success: true, data: app.getPath('downloads') }
   })
+
+  // Settings Handlers
+  const settingsPath = path.join(app.getPath('userData'), 'settings.json')
+
+  ipcMain.handle(
+    IPC_CHANNELS.GET_SETTINGS,
+    async (_event, key: string): Promise<IpcResponse<any>> => {
+      try {
+        if (fs.existsSync(settingsPath)) {
+          const data = fs.readFileSync(settingsPath, 'utf-8')
+          const settings = JSON.parse(data)
+          return {
+            success: true,
+            data: settings[key]
+          }
+        }
+      } catch (error) {
+        return { success: false, error: 'Failed to read settings' }
+      }
+      return { success: true, data: null }
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.SAVE_SETTINGS,
+    async (_event, key: string, value: any): Promise<void> => {
+      try {
+        let settings = {}
+        if (fs.existsSync(settingsPath)) {
+          const data = fs.readFileSync(settingsPath, 'utf-8')
+          settings = JSON.parse(data)
+        }
+        settings[key] = value
+        fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2))
+      } catch (error) {
+        console.error('Error saving settings:', error)
+      }
+    }
+  )
 
   // Auto Updater Handlers
   ipcMain.handle(IPC_CHANNELS.CHECK_FOR_UPDATES, async () => {

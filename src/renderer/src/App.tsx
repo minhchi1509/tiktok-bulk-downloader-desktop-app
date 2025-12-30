@@ -4,6 +4,7 @@ import Layout from './components/Layout'
 import BulkDownloader from './features/BulkDownloader'
 import SingleDownloader from './features/SingleDownloader'
 import { Tabs, Tab } from '@heroui/react'
+import { Toaster } from 'sonner'
 
 export default function App() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
             </Tabs>
           </div>
         </Layout>
+        <Toaster />
       </NextThemesProvider>
     </HeroUIProvider>
   )

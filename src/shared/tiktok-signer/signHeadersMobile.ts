@@ -111,7 +111,7 @@ const createMobileHeadersSignature = ({
     }
   } catch (err) {
     throw new Error(
-      `❌ Failed to create mobile headers signature: ${(err as Error).stack?.toString()}`
+      `Failed to create mobile headers signature: ${(err as Error).stack?.toString()}`
     )
   }
 }
