@@ -8,7 +8,10 @@ import tiktokUtils from '@shared/utils/tiktok.util'
 import axios from 'axios'
 import qs from 'qs'
 
-const getUserInfo = async (username: string): Promise<IUserInfo> => {
+const getUserInfo = async (
+  username: string,
+  options: IpcGetAwemeDetailsOptions
+): Promise<IUserInfo> => {
   try {
     const baseParams = getBaseMobileParams()
     const params = {
@@ -26,7 +29,8 @@ const getUserInfo = async (username: string): Promise<IUserInfo> => {
     })
     const headers: Record<string, string> = {
       'Content-Type': 'application/x-www-form-urlencoded',
-      'x-tt-ttnet-origin-host': 'api22-normal-c-alisg.tiktokv.com'
+      'x-tt-ttnet-origin-host': 'api22-normal-c-alisg.tiktokv.com',
+      Cookie: options.cookie
     }
     Object.entries(signatureHeaders).forEach(([k, v]) => {
       if (v) headers[k] = v
@@ -61,7 +65,7 @@ const getUserInfo = async (username: string): Promise<IUserInfo> => {
 
 const getUserAwemeList = async (
   secUid: string,
-  options?: IpcGetAwemeListOptions
+  options: IpcGetAwemeListOptions
 ): Promise<IAwemeListResponse> => {
   try {
     const { maxCursor = '0', cursor = '0', cookie: cookies = '' } = options || {}

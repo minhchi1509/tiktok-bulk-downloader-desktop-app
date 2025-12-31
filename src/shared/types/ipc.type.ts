@@ -6,11 +6,11 @@ import {
 } from '@shared/types/tiktok.type'
 
 export interface IpcGetAwemeListOptions extends IGetAwemeListCursor {
-  cookie?: string
+  cookie: string
 }
 
 export interface IpcGetAwemeDetailsOptions {
-  cookie?: string
+  cookie: string
 }
 
 export interface IDownloadFileOptions {
@@ -32,14 +32,17 @@ export type IpcResponse<T> =
     }
 
 export interface IpcApi {
-  getUserInfo: (username: string) => Promise<IpcResponse<IUserInfo>>
+  getUserInfo: (
+    username: string,
+    options: IpcGetAwemeDetailsOptions
+  ) => Promise<IpcResponse<IUserInfo>>
   getUserAwemeList: (
     secUid: string,
     options: IpcGetAwemeListOptions
   ) => Promise<IpcResponse<IAwemeListResponse>>
   getAwemeDetails: (
     awemeId: string,
-    options?: IpcGetAwemeDetailsOptions
+    options: IpcGetAwemeDetailsOptions
   ) => Promise<IpcResponse<IAwemeItem>>
   selectFolder: () => Promise<IpcResponse<string | null>>
   downloadFile: (options: IDownloadFileOptions) => Promise<IpcResponse<boolean>>

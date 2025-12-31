@@ -74,7 +74,7 @@ const SingleDownloader = () => {
         data: item,
         error
       } = await window.api.getAwemeDetails(postId, {
-        cookie: sidTt ? `sid_tt=${sidTt}` : undefined
+        cookie: sidTt ? `sid_tt=${sidTt}` : ''
       })
 
       if (!success || !item) {
@@ -161,8 +161,8 @@ const SingleDownloader = () => {
         </div>
         <div className="flex gap-2 items-center text-tiny text-warning bg-warning-50 p-2 rounded-md border border-warning-200 dark:bg-warning-900/20 dark:border-warning-500/80">
           <span>
-            ⚠️ Note: Provide `sid_tt` if the user has audience controls enabled (login required).
-            How to get: Login TikTok → F12 → Application → Cookies → sid_tt.
+            ⚠️ How to get `sid_tt`: Login TikTok → F12 → Application → Cookies → Find `sid_tt` and
+            copy its value.
           </span>
         </div>
 

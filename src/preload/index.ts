@@ -5,8 +5,8 @@ import { IPC_CHANNELS } from '@shared/constants'
 
 // Custom APIs for renderer
 const api: IpcApi = {
-  getUserInfo: (username) => {
-    return ipcRenderer.invoke(IPC_CHANNELS.GET_USER_INFO, username)
+  getUserInfo: (username, options) => {
+    return ipcRenderer.invoke(IPC_CHANNELS.GET_USER_INFO, username, options)
   },
   getUserAwemeList: (secUid, options) => {
     return ipcRenderer.invoke(IPC_CHANNELS.GET_USER_AWEME_LIST, secUid, options)

@@ -263,7 +263,10 @@ const BulkDownloader = () => {
 
   // Fetch Logic
   const handleFetchData = async () => {
-    if (!username) return
+    if (!username || !sidTt) {
+      showErrorToast('Please provide both username and sid_tt')
+      return
+    }
 
     // Toggle Loading
     if (loading) {
@@ -280,7 +283,13 @@ const BulkDownloader = () => {
     setPageIndex(0)
 
     try {
-      const { data: user, success, error } = await window.api.getUserInfo(username)
+      const {
+        data: user,
+        success,
+        error
+      } = await window.api.getUserInfo(username, {
+        cookie: `sid_tt=${sidTt}`
+      })
 
       if (!success || !user) {
         showErrorToast(error)
@@ -297,7 +306,7 @@ const BulkDownloader = () => {
         const { success, data: res } = await window.api.getUserAwemeList(user.secUid, {
           cursor: currentCursor,
           maxCursor: currentMaxCursor,
-          cookie: sidTt ? `sid_tt=${sidTt}` : undefined
+          cookie: `sid_tt=${sidTt}`
         })
 
         if (!success || !res) {
@@ -654,7 +663,7 @@ const BulkDownloader = () => {
             variant="bordered"
             size="sm"
             isDisabled={loading}
-            placeholder="Optional"
+            placeholder="Required"
             endContent={
               <Tooltip content="Save sid_tt for future use">
                 <Button isIconOnly size="sm" variant="flat" onPress={handleSaveSidTt}>
@@ -688,8 +697,8 @@ const BulkDownloader = () => {
 
         <div className="flex gap-2 items-center text-tiny text-warning bg-warning-50 p-2 rounded-md border border-warning-200 dark:bg-warning-900/20 dark:border-warning-500/80">
           <span>
-            ⚠️ Note: Provide `sid_tt` if the user has audience controls enabled (login required).
-            How to get: Login TikTok → F12 → Application → Cookies → sid_tt.
+            ⚠️ How to get `sid_tt`: Login TikTok → F12 → Application → Cookies → Find `sid_tt` and
+            copy its value.
           </span>
         </div>
       </div>
