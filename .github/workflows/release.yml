@@ -1,81 +1,59 @@
-name: Build and Release
+name: Build/release Electron app
 
 on:
   push:
     tags:
-      - 'v*'
+      - v*.*.*
 
 permissions:
   contents: write
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            platform: linux
-          - os: macos-latest
-            platform: mac
-          - os: windows-latest
-            platform: win
-
+  release:
     runs-on: ${{ matrix.os }}
 
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Check out Git repository
+        uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v3
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: 24
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install Dependencies
+        run: npm install
 
-      - name: Build Electron app
-        run: npm run build
-        env:
-          NODE_OPTIONS: --max-old-space-size=4096
+      - name: build-linux
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run build:linux
 
-      - name: Package Electron app
-        run: npx electron-builder --${{ matrix.platform }} --publish never
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: build-mac
+        if: matrix.os == 'macos-latest'
+        run: npm run build:mac
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - name: build-win
+        if: matrix.os == 'windows-latest'
+        run: npm run build:win
+
+      - name: release
+        uses: softprops/action-gh-release@v1
         with:
-          name: release-${{ matrix.platform }}
-          path: |
+          draft: true
+          files: |
             dist/*.exe
-            dist/*.dmg
             dist/*.zip
+            dist/*.dmg
             dist/*.AppImage
+            dist/*.snap
+            dist/*.deb
+            dist/*.rpm
+            dist/*.tar.gz
             dist/*.yml
-            dist/*.yaml
-          if-no-files-found: ignore
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
-
-      - name: List artifacts
-        run: ls -la artifacts/
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: artifacts/*
-          generate_release_notes: true
+            dist/*.blockmap
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
