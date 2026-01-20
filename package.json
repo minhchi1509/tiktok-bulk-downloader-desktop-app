@@ -27,7 +27,10 @@
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win",
     "build:mac": "electron-vite build && electron-builder --mac",
-    "build:linux": "electron-vite build && electron-builder --linux"
+    "build:linux": "electron-vite build && electron-builder --linux",
+    "release:patch": "git add -A && git commit -m \"chore: prepare release\" --allow-empty && npm version patch && git push --follow-tags",
+    "release:minor": "git add -A && git commit -m \"chore: prepare release\" --allow-empty && npm version minor && git push --follow-tags",
+    "release:major": "git add -A && git commit -m \"chore: prepare release\" --allow-empty && npm version major && git push --follow-tags"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
