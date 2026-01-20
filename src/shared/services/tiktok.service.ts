@@ -194,49 +194,47 @@ const getUserAwemeList = async (
   }
 }
 
-const getAwemeDetails = async (
-  awemeId: string,
-  options: IpcGetAwemeDetailsOptions
-): Promise<IAwemeItem> => {
+const getAwemeDetails = async (awemeUrl: string): Promise<IAwemeItem> => {
   try {
-    const baseParams = getBaseMobileParams()
-    const params = {
-      ...baseParams,
-      aweme_ids: `[${awemeId}]`,
-      origin_type: 'web',
-      request_source: '0'
+    const body = {
+      url: awemeUrl,
+      hd: 1
     }
-    const queryString = qs.stringify(params)
-    const signatureHeaders = createMobileHeadersSignature({
-      queryParams: queryString,
-      cookies: options.cookie
-    })
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'User-Agent':
-        'com.zhiliaoapp.musically.go/420004 (Linux; U; Android 9; en_US; SM-G998B; Build/SP1A.210812.016;tt-ok/3.12.13.44.lite-ul)',
-      'x-tt-ttnet-origin-host': 'api22-normal-c-alisg.tiktokv.com',
-      Cookie: options.cookie
-    }
-
-    Object.entries(signatureHeaders).forEach(([k, v]) => {
-      if (v) headers[k] = v
-    })
-    const { data: responseData } = await axios.get(TIKTOK_API_URL.GET_AWEME_DETAIL, {
-      params,
-      headers,
-      paramsSerializer: (params) => {
-        return qs.stringify(params, {
-          encode: true
-        })
+    const { data: responseData } = await axios.post('https://www.tikwm.com/api/', body, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
       }
     })
-    const awemeList = responseData.aweme_details || []
-    const awemeDetail = awemeList.find((item: any) => item.aweme_id === awemeId)
-    if (!awemeDetail) {
-      throw new Error()
+
+    const postData = responseData.data
+
+    const postType = postData.images ? 'PHOTO' : 'VIDEO'
+    const awemeItem: IAwemeItem = {
+      id: postData.id,
+      type: postType,
+      description: postData.title,
+      url: awemeUrl,
+      createdAt: postData.create_time,
+      stats: {
+        likes: postData.digg_count,
+        comments: postData.comment_count,
+        shares: postData.share_count,
+        views: postData.play_count,
+        collects: postData.collect_count
+      },
+      musicUri: postData.music || postData?.music_info?.play,
+      imagesUri: postType === 'PHOTO' ? postData.images : undefined,
+      video:
+        postType === 'VIDEO'
+          ? {
+              coverUri: postData.cover || postData.origin_cover || '',
+              mp4Uri: postData.hdplay || postData.play || ''
+            }
+          : undefined
     }
-    return tiktokUtils.formatAwemeItemResponse(awemeDetail)
+    console.log('✅✅✅ Aweme item:', awemeItem)
+
+    return awemeItem
   } catch (error) {
     throw new Error('Failed to fetch aweme details')
   }

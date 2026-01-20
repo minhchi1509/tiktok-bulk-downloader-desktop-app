@@ -41,10 +41,7 @@ export interface IpcApi {
     secUid: string,
     options: IpcGetAwemeListOptions
   ) => Promise<IpcResponse<IAwemeListResponse>>
-  getAwemeDetails: (
-    awemeId: string,
-    options: IpcGetAwemeDetailsOptions
-  ) => Promise<IpcResponse<IAwemeItem>>
+  getAwemeDetails: (awemeUrl: string) => Promise<IpcResponse<IAwemeItem>>
   getTiktokCredentials: () => Promise<IpcResponse<ITiktokCredentials>>
   selectFolder: () => Promise<IpcResponse<string | null>>
   downloadFile: (options: IDownloadFileOptions) => Promise<IpcResponse<boolean>>

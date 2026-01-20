@@ -25,7 +25,6 @@ interface IDownloadItem {
 
 const SingleDownloader = () => {
   const [inputUrls, setInputUrls] = useState('')
-  const [concurrency, setConcurrency] = useState('1')
   const [folderPath, setFolderPath] = useState('')
   const [fileNameFormat, setFileNameFormat] = useState<Set<string>>(new Set(['ID']))
   const [isProcessing, setIsProcessing] = useState(false)
@@ -33,6 +32,7 @@ const SingleDownloader = () => {
 
   // Refs for processing loop
   const isCancelledRef = useRef(false)
+  const pendingDownloadsRef = useRef(0)
 
   useEffect(() => {
     window.api.getDefaultDownloadPath().then(({ data: path }) => {
@@ -67,89 +67,96 @@ const SingleDownloader = () => {
     return parts.length > 0 ? `${parts.join('_')}.${ext}` : `${item.id}.${ext}`
   }
 
-  const startProcessing = async (items: IDownloadItem[]) => {
-    const maxConcurrency = Math.max(1, parseInt(concurrency) || 1)
-    const pool = new Set<Promise<void>>()
+  const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-    const cookieResponse = await window.api.getTiktokCredentials()
-    if (!cookieResponse.success || !cookieResponse.data) {
-      showErrorToast('Can not get Tiktok credentials')
-      return
+  const downloadItem = async (dataItem: IAwemeItem, itemId: string, targetFolder: string) => {
+    try {
+      if (dataItem.type === 'VIDEO' && dataItem.video) {
+        const { success } = await window.api.downloadFile({
+          url: dataItem.video.mp4Uri,
+          fileName: getFilename(dataItem, 0, 'mp4'),
+          folderPath: targetFolder
+        })
+        if (!success) throw new Error('Failed to download video')
+      } else if (dataItem.type === 'PHOTO' && dataItem.imagesUri) {
+        const baseName = getFilename(dataItem, 0, 'jpg').replace('.jpg', '')
+        const photoFolderPath = `${targetFolder}/${baseName}`
+        await Promise.all(
+          dataItem.imagesUri.map(async (u, k) => {
+            const { success } = await window.api.downloadFile({
+              url: u,
+              fileName: `${k + 1}.jpg`,
+              folderPath: photoFolderPath
+            })
+            if (!success) throw new Error('Failed to download photo')
+          })
+        )
+      }
+
+      setDownloadQueue((prev) =>
+        prev.map((i) => (i.id === itemId ? { ...i, status: 'success', data: dataItem } : i))
+      )
+    } catch (e) {
+      setDownloadQueue((prev) =>
+        prev.map((i) =>
+          i.id === itemId ? { ...i, status: 'error', error: (e as Error).message } : i
+        )
+      )
+    } finally {
+      pendingDownloadsRef.current--
+      if (pendingDownloadsRef.current === 0 && isCancelledRef.current) {
+        setIsProcessing(false)
+      }
+    }
+  }
+
+  const startProcessing = async (items: IDownloadItem[]) => {
+    let targetFolder = folderPath
+    if (!targetFolder) {
+      targetFolder =
+        (await window.api.getDefaultDownloadPath().then(({ data: path }) => path)) || ''
     }
 
     for (const item of items) {
       if (isCancelledRef.current) break
 
-      while (pool.size >= maxConcurrency) {
-        await Promise.race(pool)
+      setDownloadQueue((prev) =>
+        prev.map((i) => (i.id === item.id ? { ...i, status: 'downloading' } : i))
+      )
+
+      try {
+        const detailRes = await window.api.getAwemeDetails(item.originalUrl)
+        if (!detailRes.success || !detailRes.data)
+          throw new Error(detailRes.error || 'Fetch Failed')
+
+        const dataItem = detailRes.data
+
+        // Start download without waiting (fire and forget)
+        pendingDownloadsRef.current++
+        downloadItem(dataItem, item.id, targetFolder)
+      } catch (e) {
+        setDownloadQueue((prev) =>
+          prev.map((i) =>
+            i.id === item.id ? { ...i, status: 'error', error: (e as Error).message } : i
+          )
+        )
       }
 
-      if (isCancelledRef.current) break
-
-      const promise = (async () => {
-        try {
-          setDownloadQueue((prev) =>
-            prev.map((i) => (i.id === item.id ? { ...i, status: 'downloading' } : i))
-          )
-
-          // Logic
-
-          const detailRes = await window.api.getAwemeDetails(item.id, {
-            cookie: cookieResponse.data.cookie
-          })
-          if (!detailRes.success || !detailRes.data)
-            throw new Error(detailRes.error || 'Fetch Failed')
-
-          const dataItem = detailRes.data
-
-          // Download
-          let targetFolder = folderPath
-          // Ensure folder exists/is set
-          if (!targetFolder) {
-            targetFolder =
-              (await window.api.getDefaultDownloadPath().then(({ data: path }) => path)) || ''
-          }
-
-          if (dataItem.type === 'VIDEO' && dataItem.video) {
-            const { success } = await window.api.downloadFile({
-              url: dataItem.video.mp4Uri,
-              fileName: getFilename(dataItem, 0, 'mp4'),
-              folderPath: targetFolder
-            })
-            if (!success) throw new Error('Failed to download video')
-          } else if (dataItem.type === 'PHOTO' && dataItem.imagesUri) {
-            const baseName = getFilename(dataItem, 0, 'jpg').replace('.jpg', '')
-            const photoFolderPath = `${targetFolder}/${baseName}`
-            await Promise.all(
-              dataItem.imagesUri.map(async (u, k) => {
-                const { success } = await window.api.downloadFile({
-                  url: u,
-                  fileName: `${k + 1}.jpg`,
-                  folderPath: photoFolderPath
-                })
-                if (!success) throw new Error('Failed to download photo')
-              })
-            )
-          }
-
-          setDownloadQueue((prev) =>
-            prev.map((i) => (i.id === item.id ? { ...i, status: 'success', data: dataItem } : i))
-          )
-        } catch (e) {
-          setDownloadQueue((prev) =>
-            prev.map((i) =>
-              i.id === item.id ? { ...i, status: 'error', error: (e as Error).message } : i
-            )
-          )
-        }
-      })()
-
-      pool.add(promise)
-      promise.then(() => pool.delete(promise))
+      // Rate limit: 1 request per second for getAwemeDetails
+      if (!isCancelledRef.current) {
+        await delay(1000)
+      }
     }
 
-    await Promise.all(pool)
-    setIsProcessing(false)
+    // Wait for all pending downloads to complete
+    const checkCompletion = () => {
+      if (pendingDownloadsRef.current === 0) {
+        setIsProcessing(false)
+      } else {
+        setTimeout(checkCompletion, 100)
+      }
+    }
+    checkCompletion()
   }
 
   const onDownloadClick = async () => {
@@ -228,17 +235,6 @@ const SingleDownloader = () => {
                 }
               />
             </Tooltip>
-
-            <Input
-              label="Concurrency"
-              type="number"
-              min={1}
-              value={concurrency}
-              onValueChange={setConcurrency}
-              className="w-32"
-              variant="bordered"
-              isDisabled={isProcessing}
-            />
           </div>
 
           <Select

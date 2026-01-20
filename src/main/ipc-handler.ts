@@ -73,13 +73,9 @@ const setupIpcHandlers = ({ mainWindow }: ISetupIpcHandlersOptions) => {
 
   ipcMain.handle(
     IPC_CHANNELS.GET_AWEME_DETAILS,
-    async (
-      _event,
-      awemeId: string,
-      options: IpcGetAwemeDetailsOptions
-    ): Promise<IpcResponse<IAwemeItem>> => {
+    async (_event, awemeUrl: string): Promise<IpcResponse<IAwemeItem>> => {
       try {
-        const awemeDetails = await TiktokService.getAwemeDetails(awemeId, options)
+        const awemeDetails = await TiktokService.getAwemeDetails(awemeUrl)
         return {
           success: true,
           data: awemeDetails

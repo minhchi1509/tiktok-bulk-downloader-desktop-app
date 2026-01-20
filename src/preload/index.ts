@@ -11,8 +11,8 @@ const api: IpcApi = {
   getUserAwemeList: (secUid, options) => {
     return ipcRenderer.invoke(IPC_CHANNELS.GET_USER_AWEME_LIST, secUid, options)
   },
-  getAwemeDetails: (awemeId, options) => {
-    return ipcRenderer.invoke(IPC_CHANNELS.GET_AWEME_DETAILS, awemeId, options)
+  getAwemeDetails: (awemeUrl) => {
+    return ipcRenderer.invoke(IPC_CHANNELS.GET_AWEME_DETAILS, awemeUrl)
   },
   getTiktokCredentials: () => {
     return ipcRenderer.invoke(IPC_CHANNELS.GET_TIKTOK_CREDENTIALS)
