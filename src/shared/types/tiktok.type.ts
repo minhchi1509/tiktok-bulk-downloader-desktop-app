@@ -36,7 +36,7 @@ export interface IAwemeListResponse {
 }
 
 export interface IUserInfo {
-  uid: string
+  id: string
   uniqueId: string
   secUid: string
   followerCount: number

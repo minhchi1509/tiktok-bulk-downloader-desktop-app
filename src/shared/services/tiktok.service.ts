@@ -1,7 +1,5 @@
 import { TIKTOK_API_URL } from '@shared/constants'
-import createMobileHeadersSignature, {
-  getBaseMobileParams
-} from '@shared/tiktok-signer/signHeadersMobile'
+import { getBaseMobileParams } from '@shared/tiktok-signer/signHeadersMobile'
 import { IpcGetAwemeListOptions, IpcGetAwemeDetailsOptions } from '@shared/types/ipc.type'
 import {
   IUserInfo,
@@ -13,116 +11,38 @@ import tiktokUtils from '@shared/utils/tiktok.util'
 import axios from 'axios'
 import qs from 'qs'
 
-const searchUserIdByUsername = async (
-  username: string,
-  options: IpcGetAwemeDetailsOptions
-): Promise<string> => {
-  try {
-    const baseParams = getBaseMobileParams()
-    const params = {
-      ...baseParams,
-      cursor: '0',
-      enable_lite_workflow: '1',
-      enter_from: 'web',
-      enable_lite_cut: '1',
-      backtrace: '',
-      keyword: username,
-      count: '1',
-      last_search_id: '',
-      end_to_end_search_session_id: '',
-      query_correct_type: '1',
-      search_source: 'search_history',
-      search_id: '',
-      request_tag_from: 'h5'
-    }
-
-    const queryString = qs.stringify(params)
-    const signatureHeaders = createMobileHeadersSignature({
-      queryParams: queryString,
-      cookies: options.cookie
-    })
-    const headers: Record<string, string> = {
-      Cookie: options.cookie
-    }
-    Object.entries(signatureHeaders).forEach(([k, v]) => {
-      if (v) headers[k] = v
-    })
-    const { data: responseData } = await axios.get(TIKTOK_API_URL.SEARCH_USER, {
-      params,
-      headers,
-      paramsSerializer: (params) => {
-        return qs.stringify(params, {
-          encode: true
-        })
-      }
-    })
-
-    const userId = tiktokUtils.findValueByKey(responseData, 'uid')
-    if (!userId) {
-      throw new Error()
-    }
-    return userId
-  } catch (error) {
-    throw new Error('Failed to search user ID by username')
-  }
-}
-
 const getUserInfoByUsername = async (
   username: string,
   options: IpcGetAwemeDetailsOptions
 ): Promise<IUserInfo> => {
   try {
-    const userId = await searchUserIdByUsername(username, options)
-
-    const baseParams = getBaseMobileParams()
-    const params = {
-      ...baseParams,
-      sec_user_id: '',
-      user_id: userId,
-      unique_id: username,
-      lite_flow_schedule: 'new'
-    }
-
-    const queryString = qs.stringify(params)
-    const signatureHeaders = createMobileHeadersSignature({
-      queryParams: queryString
-    })
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'User-Agent':
-        'com.zhiliaoapp.musically.go/420004 (Linux; U; Android 9; en_US; SM-G998B; Build/SP1A.210812.016;tt-ok/3.12.13.44.lite-ul)',
-      Cookie: options.cookie
-    }
-    Object.entries(signatureHeaders).forEach(([k, v]) => {
-      if (v) headers[k] = v
-    })
-    const { data: responseData } = await axios.get(TIKTOK_API_URL.GET_USER_INFO, {
-      params,
-      headers,
-      paramsSerializer: (params) => {
-        return qs.stringify(params, {
-          encode: true
-        })
+    const { data: rawResponse } = await axios.get(`https://www.tiktok.com/@${username}`, {
+      headers: {
+        Cookie: options.cookie,
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36'
       }
     })
 
-    const userInfo = responseData.user
+    const regex = /(?<="webapp\.user-detail":)[\s\S]*?(?=,"webapp\.a-b")/
 
-    if (!userInfo || userInfo.unique_id.toLowerCase() !== username.toLowerCase()) {
-      throw new Error(`User ${username} not found`)
+    const result = rawResponse.match(regex)
+    if (!result || result.length === 0) {
+      throw new Error('User data not found in the page')
     }
 
+    const userDataString = result[0]
+    const userData = JSON.parse(userDataString)
+    const userInfo = userData.userInfo?.user
+    const userStat = userData.userInfo?.stats
+
     return {
-      uid: userInfo.uid,
-      uniqueId: userInfo.unique_id,
-      secUid: userInfo.sec_uid,
-      followerCount: userInfo.follower_count,
-      followingCount: userInfo.following_count,
-      avatarUri:
-        userInfo.avatar_larger?.url_list?.[0] ||
-        userInfo.avatar_medium?.url_list?.[0] ||
-        userInfo.avatar_thumb?.url_list?.[0] ||
-        ''
+      id: userInfo.id,
+      uniqueId: userInfo.uniqueId,
+      secUid: userInfo.secUid,
+      followerCount: userStat.followerCount,
+      followingCount: userStat.followingCount,
+      avatarUri: userInfo.avatarLarger || userInfo.avatarMedium || userInfo.avatarThumb || ''
     }
   } catch (error) {
     throw new Error('Failed to fetch user info')
@@ -151,11 +71,7 @@ const getUserAwemeList = async (
       data_saver_work: 'false',
       page_type: '2'
     }
-    const queryString = qs.stringify(params)
-    const signatureHeaders = createMobileHeadersSignature({
-      queryParams: queryString,
-      cookies
-    })
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/x-www-form-urlencoded',
       'x-tt-ttnet-origin-host': 'api22-normal-c-alisg.tiktokv.com',
@@ -163,9 +79,6 @@ const getUserAwemeList = async (
       Cookie: cookies
     }
 
-    Object.entries(signatureHeaders).forEach(([k, v]) => {
-      if (v) headers[k] = v
-    })
     const { data: responseData } = await axios.get(TIKTOK_API_URL.GET_USER_AWEME_LIST, {
       params,
       headers,
