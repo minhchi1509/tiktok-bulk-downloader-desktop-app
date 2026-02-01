@@ -1,5 +1,7 @@
 import { IAwemeItem, ITiktokAwemeItemStats, ITiktokVideo } from '@shared/types/tiktok.type'
 
+import { v4 as uuidv4 } from 'uuid'
+
 const getHighestQualityVideoUri = (bitRateArr: any): string => {
   if (!Array.isArray(bitRateArr) || bitRateArr.length === 0) {
     return ''
@@ -70,9 +72,71 @@ export const findValueByKey = (obj: Record<string, any>, targetKey: string): any
   return undefined // Không tìm thấy
 }
 
+const bytesToHex = (bytes: Uint8Array): string => {
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+const randomBytes = (size: number): Uint8Array => {
+  const bytes = new Uint8Array(size)
+  crypto.getRandomValues(bytes)
+  return bytes
+}
+
+const getBaseMobileParams = () => {
+  const device_id = '7555746395380368897'
+  const iid = '7580036180676593416'
+
+  const cdid = uuidv4()
+  const openudid = bytesToHex(randomBytes(8))
+  const timestamp = Math.floor(Date.now() / 1000)
+  return {
+    _rticket: Date.now(),
+    device_id,
+    ts: timestamp,
+    iid,
+    openudid,
+    cdid,
+    manifest_version_code: 410405,
+    app_language: 'en',
+    app_type: 'normal',
+    app_package: 'com.zhiliaoapp.musically.go',
+    channel: 'googleplay',
+    device_type: 'SM-G998B',
+    language: 'en',
+    host_abi: 'x86_64',
+    locale: 'en',
+    resolution: '900*1600',
+    update_version_code: 410405,
+    ac2: 'wifi',
+    sys_region: 'US',
+    os_api: 28,
+    timezone_name: 'Asia/Saigon',
+    dpi: 240,
+    carrier_region: 'VN',
+    ac: 'wifi',
+    os: 'android',
+    os_version: '9',
+    timezone_offset: 25200,
+    version_code: 410405,
+    app_name: 'musically_go',
+    ab_version: '41.4.5',
+    version_name: '41.4.5',
+    device_brand: 'samsung',
+    op_region: 'VN',
+    ssmix: 'a',
+    device_platform: 'android',
+    build_number: '41.4.5',
+    region: 'US',
+    aid: 1340
+  }
+}
+
 const tiktokUtils = {
   formatAwemeItemResponse,
-  findValueByKey
+  findValueByKey,
+  getBaseMobileParams
 }
 
 export default tiktokUtils

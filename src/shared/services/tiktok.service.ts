@@ -1,5 +1,4 @@
 import { TIKTOK_API_URL } from '@shared/constants'
-import { getBaseMobileParams } from '@shared/tiktok-signer/signHeadersMobile'
 import { IpcGetAwemeListOptions, IpcGetAwemeDetailsOptions } from '@shared/types/ipc.type'
 import {
   IUserInfo,
@@ -55,7 +54,7 @@ const getUserAwemeList = async (
 ): Promise<IAwemeListResponse> => {
   try {
     const { maxCursor = '0', cursor = '0', cookie: cookies = '' } = options || {}
-    const baseParams = getBaseMobileParams()
+    const baseParams = tiktokUtils.getBaseMobileParams()
     const params = {
       ...baseParams,
       source: '0',
