@@ -43,8 +43,6 @@ jobs:
         timeout-minutes: 10
         env:
           NODE_OPTIONS: --max-old-space-size=8192
-          MAIN_VITE_GIST_SECRET_KEY: ${{ secrets.MAIN_VITE_GIST_SECRET_KEY }}
-          MAIN_VITE_GIST_ID: ${{ secrets.MAIN_VITE_GIST_ID }}
 
       - name: Package Electron app
         run: npx electron-builder --${{ matrix.platform }} --publish never

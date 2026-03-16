@@ -11,11 +11,8 @@ const api: IpcApi = {
   getUserAwemeList: (secUid, options) => {
     return ipcRenderer.invoke(IPC_CHANNELS.GET_USER_AWEME_LIST, secUid, options)
   },
-  getAwemeDetails: (awemeUrl) => {
-    return ipcRenderer.invoke(IPC_CHANNELS.GET_AWEME_DETAILS, awemeUrl)
-  },
-  getTiktokCredentials: () => {
-    return ipcRenderer.invoke(IPC_CHANNELS.GET_TIKTOK_CREDENTIALS)
+  getMultiAwemeDetails: (awemeIds, options) => {
+    return ipcRenderer.invoke(IPC_CHANNELS.GET_MULTI_AWEME_DETAILS, awemeIds, options)
   },
   selectFolder: () => {
     return ipcRenderer.invoke(IPC_CHANNELS.SELECT_FOLDER)
@@ -30,7 +27,7 @@ const api: IpcApi = {
   getSettings: (key: string) => {
     return ipcRenderer.invoke(IPC_CHANNELS.GET_SETTINGS, key)
   },
-  saveSettings: (key: string, value: string) => {
+  saveSettings: <T>(key: string, value: T) => {
     return ipcRenderer.invoke(IPC_CHANNELS.SAVE_SETTINGS, key, value)
   },
 

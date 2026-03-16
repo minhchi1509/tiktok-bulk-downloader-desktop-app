@@ -1,8 +1,7 @@
 const IPC_CHANNELS = {
   GET_USER_AWEME_LIST: 'GET_USER_AWEME_LIST',
   GET_USER_INFO: 'GET_USER_INFO',
-  GET_AWEME_DETAILS: 'GET_AWEME_DETAILS',
-  GET_TIKTOK_CREDENTIALS: 'GET_TIKTOK_CREDENTIALS',
+  GET_MULTI_AWEME_DETAILS: 'GET_MULTI_AWEME_DETAILS',
   SELECT_FOLDER: 'SELECT_FOLDER',
   DOWNLOAD_FILE: 'DOWNLOAD_FILE',
   GET_DEFAULT_DOWNLOAD_PATH: 'GET_DEFAULT_DOWNLOAD_PATH',
@@ -24,11 +23,13 @@ const IPC_CHANNELS = {
 
 const TIKTOK_API_URL = {
   GET_USER_AWEME_LIST: 'https://aggr22-normal-alisg.tiktokv.com/lite/v2/public/item/list/',
-  GET_AWEME_DETAIL: 'https://aggr22-normal-alisg.tiktokv.com/tiktok/v1/videos/detail/',
-  SEARCH_USER: 'https://search16-normal-c-alisg.tiktokv.com/aweme/v1/general/search/single/',
-  GET_USER_INFO: 'https://api22-core-c-alisg.tiktokv.com/lite/v2/user/detail/other/',
-  GET_TIKTOK_CREDENTIALS:
-    'https://gist.githubusercontent.com/minhchi1509/f5ca73cbd389114c9928f99d6d471125/raw/tiktok-app-credentials.json'
+  GET_MULTI_AWEME_DETAIL: 'https://api22-core-c-alisg.tiktokv.com/lite/v2/feed/fyp/'
 } as const
 
-export { IPC_CHANNELS, TIKTOK_API_URL }
+const DEFAULT_USER_AGENT =
+  'com.zhiliaoapp.musically/2023501030 (Linux; U; Android 13; en_US; Pixel 7; Build/TD1A.220804.031; Cronet/58.0.2991.0)'
+
+const TIKTOK_POST_DETAIL_URL_PATTERN =
+  /tiktok\.com\/(?:@[A-Za-z0-9._-]+)\/(?:video|photo)\/(\d+)(?:\?.*)?$/
+
+export { IPC_CHANNELS, TIKTOK_API_URL, DEFAULT_USER_AGENT, TIKTOK_POST_DETAIL_URL_PATTERN }

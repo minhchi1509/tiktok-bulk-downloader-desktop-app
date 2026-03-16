@@ -16,7 +16,7 @@ export interface ITiktokAwemeItemStats {
   collects: number
 }
 
-export interface IAwemeItem {
+export interface IAwemeDetails {
   id: string
   url: string
   description: string
@@ -29,7 +29,7 @@ export interface IAwemeItem {
 }
 
 export interface IAwemeListResponse {
-  awemeList: IAwemeItem[]
+  awemeList: IAwemeDetails[]
   pagination: IGetAwemeListCursor & {
     hasMore: boolean
   }
@@ -42,8 +42,4 @@ export interface IUserInfo {
   followerCount: number
   followingCount: number
   avatarUri: string
-}
-
-export interface ITiktokCredentials {
-  cookie: string
 }

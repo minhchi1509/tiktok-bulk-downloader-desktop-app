@@ -1,17 +1,16 @@
 import {
-  IAwemeItem,
+  IAwemeDetails,
   IAwemeListResponse,
   IGetAwemeListCursor,
-  ITiktokCredentials,
   IUserInfo
 } from '@shared/types/tiktok.type'
 
 export interface IpcGetAwemeListOptions extends IGetAwemeListCursor {
-  cookie: string
+  cookie?: string
 }
 
 export interface IpcGetAwemeDetailsOptions {
-  cookie: string
+  cookie?: string
 }
 
 export interface IDownloadFileOptions {
@@ -35,14 +34,16 @@ export type IpcResponse<T> =
 export interface IpcApi {
   getUserInfo: (
     username: string,
-    options: IpcGetAwemeDetailsOptions
+    options?: IpcGetAwemeDetailsOptions
   ) => Promise<IpcResponse<IUserInfo>>
   getUserAwemeList: (
     secUid: string,
-    options: IpcGetAwemeListOptions
+    options?: IpcGetAwemeListOptions
   ) => Promise<IpcResponse<IAwemeListResponse>>
-  getAwemeDetails: (awemeUrl: string) => Promise<IpcResponse<IAwemeItem>>
-  getTiktokCredentials: () => Promise<IpcResponse<ITiktokCredentials>>
+  getMultiAwemeDetails: (
+    awemeIds: string[],
+    options?: IpcGetAwemeDetailsOptions
+  ) => Promise<IpcResponse<Record<string, IAwemeDetails>>>
   selectFolder: () => Promise<IpcResponse<string | null>>
   downloadFile: (options: IDownloadFileOptions) => Promise<IpcResponse<boolean>>
   getDefaultDownloadPath: () => Promise<IpcResponse<string>>
@@ -59,6 +60,6 @@ export interface IpcApi {
   onUpdateNotAvailable: (callback: () => void) => void
 
   // Settings
-  getSettings: (key: string) => Promise<any>
-  saveSettings: (key: string, value: any) => Promise<void>
+  getSettings: <T>(key: string) => Promise<IpcResponse<T>>
+  saveSettings: <T>(key: string, value: T) => Promise<void>
 }

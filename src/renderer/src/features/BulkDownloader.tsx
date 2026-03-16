@@ -29,12 +29,30 @@ import {
   FilterFn,
   RowSelectionState
 } from '@tanstack/react-table'
-import { useState, useMemo, useRef, useCallback } from 'react'
-import { IAwemeItem, IUserInfo } from '@shared/types/tiktok.type'
-import { Search, Download, FolderOpen, StopCircle, ExternalLink, AlertCircle } from 'lucide-react'
-import { showErrorToast } from '@renderer/lib/toast'
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
+import { IAwemeDetails, IUserInfo } from '@shared/types/tiktok.type'
+import {
+  Search,
+  Download,
+  FolderOpen,
+  StopCircle,
+  ExternalLink,
+  AlertCircle,
+  Save,
+  Loader2
+} from 'lucide-react'
+import tiktokUtils, { TFileNameFormatOption } from '@shared/utils/tiktok.util'
+import { showErrorToast, showSuccessToast } from '@renderer/lib/toast'
 
-const columnHelper = createColumnHelper<IAwemeItem>()
+const columnHelper = createColumnHelper<IAwemeDetails>()
+const TIKTOK_COOKIE_SETTINGS_KEY = 'tiktok_cookie'
+
+const FILE_NAME_FORMAT_OPTIONS: Array<{ key: TFileNameFormatOption; label: string }> = [
+  { key: 'numericalOrder', label: 'Numerical Order' },
+  { key: 'id', label: 'ID' },
+  { key: 'title', label: 'Description' },
+  { key: 'timestamp', label: 'Timestamp' }
+]
 
 const BulkDownloader = () => {
   const [username, setUsername] = useState('')
@@ -42,7 +60,7 @@ const BulkDownloader = () => {
   const [batchSize, setBatchSize] = useState('15')
   const [loading, setLoading] = useState(false)
   const [userInfo, setUserInfo] = useState<IUserInfo | null>(null)
-  const [posts, setPosts] = useState<IAwemeItem[]>([])
+  const [posts, setPosts] = useState<IAwemeDetails[]>([])
 
   // Fetch State
   const isCancelGetDataRef = useRef(false)
@@ -60,15 +78,17 @@ const BulkDownloader = () => {
   // Download State
   const [folderPath, setFolderPath] = useState('')
   // Using Set to handle multiple selections for filename format
-  const [fileNameFormat, setFileNameFormat] = useState<Set<string>>(
-    new Set(['Numerical order', 'ID'])
+  const [fileNameFormat, setFileNameFormat] = useState<Set<TFileNameFormatOption>>(
+    new Set(['numericalOrder', 'id'])
   )
+  const [tiktokCookie, setTiktokCookie] = useState('')
+  const [isSavingCookie, setIsSavingCookie] = useState(false)
   const [downloading, setDownloading] = useState(false)
-  const [failedItems, setFailedItems] = useState<{ item: IAwemeItem; error: string }[]>([])
+  const [failedItems, setFailedItems] = useState<{ item: IAwemeDetails; error: string }[]>([])
   const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0 })
 
   // Custom Filter Function
-  const customFilterFn: FilterFn<IAwemeItem> = (row, columnId, filterValue) => {
+  const customFilterFn: FilterFn<IAwemeDetails> = (row, columnId, filterValue) => {
     const rowValue = row.getValue(columnId) as string
     if (!filterValue) return true
     return String(rowValue).toLowerCase().includes(String(filterValue).toLowerCase())
@@ -272,21 +292,10 @@ const BulkDownloader = () => {
     setPageIndex(0)
 
     try {
-      const { data: credentials, success: isGetCredentialsSuccess } =
-        await window.api.getTiktokCredentials()
-      if (!isGetCredentialsSuccess) {
-        showErrorToast('Failed to fetch TikTok credentials')
-        setLoading(false)
-        return
-      }
+      const cookie = tiktokCookie.trim()
+      const requestOptions = cookie ? { cookie } : undefined
 
-      const {
-        data: user,
-        success,
-        error
-      } = await window.api.getUserInfo(username, {
-        cookie: credentials.cookie
-      })
+      const { data: user, success, error } = await window.api.getUserInfo(username, requestOptions)
 
       if (!success || !user) {
         showErrorToast(error)
@@ -303,7 +312,7 @@ const BulkDownloader = () => {
         const { success, data: res } = await window.api.getUserAwemeList(user.secUid, {
           cursor: currentCursor,
           maxCursor: currentMaxCursor,
-          cookie: credentials.cookie
+          ...(requestOptions || {})
         })
 
         if (!success || !res) {
@@ -331,37 +340,48 @@ const BulkDownloader = () => {
     }
   }
 
-  // Fetch default path on mount
-  useState(() => {
-    window.api.getDefaultDownloadPath().then(({ data: path }) => {
-      if (path) setFolderPath(path)
-    })
-  })
+  // Fetch default path and saved cookie on mount
+  useEffect(() => {
+    const loadInitialSettings = async () => {
+      const [{ data: path }, savedCookieResult] = await Promise.all([
+        window.api.getDefaultDownloadPath(),
+        window.api.getSettings<string>(TIKTOK_COOKIE_SETTINGS_KEY)
+      ])
 
-  // Download Logic
-  const sanitizeFilename = (name: string) => {
-    // Allow Vietnamese characters and other unicode, just strip illegal Windows chars < > : " / \ | ? *
-    return name
-      ? name
-          .replace(/[<>:"/\\|?*]+/g, '')
-          .trim()
-          .substring(0, 100)
-      : 'no_desc'
+      if (path) {
+        setFolderPath(path)
+      }
+
+      if (savedCookieResult?.success && typeof savedCookieResult.data === 'string') {
+        setTiktokCookie(savedCookieResult.data)
+      }
+    }
+
+    loadInitialSettings()
+  }, [])
+
+  const handleSaveCookie = async () => {
+    setIsSavingCookie(true)
+    try {
+      await window.api.saveSettings(TIKTOK_COOKIE_SETTINGS_KEY, tiktokCookie.trim())
+      showSuccessToast('TikTok cookie saved successfully')
+    } catch (_error) {
+      showErrorToast('Failed to save TikTok cookie')
+    } finally {
+      setIsSavingCookie(false)
+    }
   }
 
-  const getFilename = (item: IAwemeItem, index: number, ext: string) => {
-    const formatKeys = Array.from(fileNameFormat)
-
-    const parts: string[] = []
-
-    formatKeys.forEach((key) => {
-      if (key === 'Numerical order') parts.push(`${index + 1}`)
-      if (key === 'ID') parts.push(item.id)
-      if (key === 'Timestamp') parts.push(item.createdAt.toString())
-      if (key === 'Description') parts.push(sanitizeFilename(item.description))
+  const getFilename = (item: IAwemeDetails, index: number, ext: string) => {
+    const filename = tiktokUtils.getFilename({
+      order: index + 1,
+      id: item.id,
+      title: item.description,
+      timestamp: item.createdAt,
+      format: Array.from(fileNameFormat)
     })
 
-    return parts.length > 0 ? `${parts.join('_')}.${ext}` : `${item.id}.${ext}`
+    return `${filename}.${ext}`
   }
 
   const handleDownload = async () => {
@@ -387,7 +407,10 @@ const BulkDownloader = () => {
     isCancelDownloadRef.current = false
     setDownloadProgress({ current: 0, total: selectedRows.length })
 
-    const safeUsername = sanitizeFilename(userInfo?.uniqueId || username || 'unknown_user')
+    const safeUsername = tiktokUtils.getFilename({
+      id: userInfo?.uniqueId || username || 'unknown_user',
+      format: ['id']
+    })
     const userFolderPath = `${currentFolderPath}/${safeUsername}`
 
     // Batch processing
@@ -494,11 +517,34 @@ const BulkDownloader = () => {
               />
             </Tooltip>
 
+            <Input
+              label="TikTok Cookie (optional)"
+              value={tiktokCookie}
+              onValueChange={setTiktokCookie}
+              className="w-96"
+              size="sm"
+              endContent={
+                <button
+                  type="button"
+                  aria-label="Save TikTok cookie"
+                  onClick={handleSaveCookie}
+                  disabled={isSavingCookie || !tiktokCookie.trim()}
+                  className="flex items-center justify-center text-default-400 disabled:opacity-40 enabled:hover:text-primary"
+                >
+                  {isSavingCookie ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Save size={16} />
+                  )}
+                </button>
+              }
+            />
+
             <Select
               label="Filename Format"
               selectionMode="multiple"
               selectedKeys={fileNameFormat}
-              onSelectionChange={(keys) => setFileNameFormat(keys as Set<string>)}
+              onSelectionChange={(keys) => setFileNameFormat(keys as Set<TFileNameFormatOption>)}
               className="w-96"
               size="sm"
               classNames={{
@@ -519,10 +565,9 @@ const BulkDownloader = () => {
                 </div>
               )}
             >
-              <SelectItem key="Numerical order">Numerical Order</SelectItem>
-              <SelectItem key="ID">ID</SelectItem>
-              <SelectItem key="Description">Description</SelectItem>
-              <SelectItem key="Timestamp">Timestamp</SelectItem>
+              {FILE_NAME_FORMAT_OPTIONS.map((option) => (
+                <SelectItem key={option.key}>{option.label}</SelectItem>
+              ))}
             </Select>
 
             <Input
@@ -637,7 +682,9 @@ const BulkDownloader = () => {
   }, [
     table,
     folderPath,
+    tiktokCookie,
     fileNameFormat,
+    isSavingCookie,
     downloading,
     downloadProgress,
     rowSelection,

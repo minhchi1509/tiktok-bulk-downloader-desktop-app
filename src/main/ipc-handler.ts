@@ -6,12 +6,7 @@ import {
   IpcGetAwemeListOptions,
   IpcResponse
 } from '@shared/types/ipc.type'
-import {
-  IAwemeItem,
-  IAwemeListResponse,
-  ITiktokCredentials,
-  IUserInfo
-} from '@shared/types/tiktok.type'
+import { IAwemeDetails, IAwemeListResponse, IUserInfo } from '@shared/types/tiktok.type'
 import { ipcMain, dialog, app, BrowserWindow } from 'electron'
 import fs from 'fs'
 import path from 'path'
@@ -54,7 +49,7 @@ const setupIpcHandlers = ({ mainWindow }: ISetupIpcHandlersOptions) => {
     async (
       _event,
       username: string,
-      options: IpcGetAwemeDetailsOptions
+      options?: IpcGetAwemeDetailsOptions
     ): Promise<IpcResponse<IUserInfo>> => {
       try {
         const userInfo = await TiktokService.getUserInfoByUsername(username, options)
@@ -72,31 +67,17 @@ const setupIpcHandlers = ({ mainWindow }: ISetupIpcHandlersOptions) => {
   )
 
   ipcMain.handle(
-    IPC_CHANNELS.GET_AWEME_DETAILS,
-    async (_event, awemeUrl: string): Promise<IpcResponse<IAwemeItem>> => {
+    IPC_CHANNELS.GET_MULTI_AWEME_DETAILS,
+    async (
+      _event,
+      awemeIds: string[],
+      options?: IpcGetAwemeDetailsOptions
+    ): Promise<IpcResponse<Record<string, IAwemeDetails>>> => {
       try {
-        const awemeDetails = await TiktokService.getAwemeDetails(awemeUrl)
+        const awemeDetails = await TiktokService.getMultiAwemeDetails(awemeIds, options)
         return {
           success: true,
           data: awemeDetails
-        }
-      } catch (error) {
-        return {
-          success: false,
-          error: (error as Error).message
-        }
-      }
-    }
-  )
-
-  ipcMain.handle(
-    IPC_CHANNELS.GET_TIKTOK_CREDENTIALS,
-    async (): Promise<IpcResponse<ITiktokCredentials>> => {
-      try {
-        const credentials = await TiktokService.getCredentials()
-        return {
-          success: true,
-          data: credentials
         }
       } catch (error) {
         return {
