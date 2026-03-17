@@ -1,5 +1,8 @@
 import { DEFAULT_USER_AGENT, TIKTOK_API_URL } from '@shared/constants'
-import { IpcGetAwemeListOptions, IpcGetAwemeDetailsOptions } from '@shared/types/ipc.type'
+import {
+  IpcGetAwemeDetailsOptions,
+  IpcGetAwemeListOptions
+} from '@shared/types/ipc/ipc-invoke.type'
 import { IUserInfo, IAwemeListResponse, IAwemeDetails } from '@shared/types/tiktok.type'
 import tiktokUtils from '@shared/utils/tiktok.util'
 import axios from 'axios'

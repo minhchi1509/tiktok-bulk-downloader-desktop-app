@@ -1,79 +1,62 @@
-import {
-  IPC_EVENT_CHANNELS,
-  IPC_INVOKE_CHANNELS,
-  IpcApi,
-  IpcEventMethod,
-  IpcEventPayload,
-  IpcInvokeHandlers,
-  IpcInvokeMethod,
-  IpcResponse
-} from '@shared/types/ipc.type'
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import { IpcEventMethod, IpcEventApi, IPC_EVENT_CHANNELS } from '@shared/types/ipc/ipc-event.type'
+import {
+  IpcInvokeHandlers,
+  IPC_INVOKE_CHANNELS,
+  IpcInvokeMethod,
+  IpcResponse
+} from '@shared/types/ipc/ipc-invoke.type'
+import { IpcApi } from '@shared/types/ipc'
 
-const invokeApi: IpcInvokeHandlers = new Proxy({} as IpcInvokeHandlers, {
-  get(_target, method) {
-    return (...args: unknown[]) => {
-      return ipcRenderer.invoke(IPC_INVOKE_CHANNELS[method as IpcInvokeMethod], ...args)
+const NO_PAYLOAD_EVENTS: Set<IpcEventMethod> = new Set([
+  'onCheckingForUpdate',
+  'onUpdateNotAvailable'
+])
+
+const createIpcProxy = <T extends object>(
+  resolver: (method: string) => (...args: unknown[]) => unknown
+): T => {
+  return new Proxy({} as object, {
+    get(_target, method) {
+      return resolver(String(method))
+    }
+  }) as T
+}
+
+const invokeApi = createIpcProxy<IpcInvokeHandlers>((method) => {
+  return (...args: unknown[]) => {
+    return ipcRenderer.invoke(IPC_INVOKE_CHANNELS[method as IpcInvokeMethod], ...args)
+  }
+})
+
+const eventApi = createIpcProxy<IpcEventApi>((method) => {
+  return (...args: unknown[]) => {
+    const callback = args[0] as (...callbackArgs: unknown[]) => void
+    const eventMethod = method as IpcEventMethod
+    const channel = IPC_EVENT_CHANNELS[eventMethod]
+    const listener = NO_PAYLOAD_EVENTS.has(eventMethod)
+      ? () => callback()
+      : (_event: Electron.IpcRendererEvent, payload: unknown) => callback(payload)
+
+    ipcRenderer.on(channel, listener)
+
+    return () => {
+      ipcRenderer.removeListener(channel, listener)
     }
   }
 })
 
-const on = <T>(channel: string, callback: (payload: T) => void): (() => void) => {
-  const listener = (_event: Electron.IpcRendererEvent, payload: T) => callback(payload)
-  ipcRenderer.on(channel, listener)
-  return () => {
-    ipcRenderer.removeListener(channel, listener)
-  }
-}
-
-const onNoPayload = (channel: string, callback: () => void): (() => void) => {
-  const listener = () => callback()
-  ipcRenderer.on(channel, listener)
-  return () => {
-    ipcRenderer.removeListener(channel, listener)
-  }
-}
-
-const onEvent = <K extends IpcEventMethod>(
-  method: K,
-  callback: IpcEventPayload<K> extends void ? () => void : (payload: IpcEventPayload<K>) => void
-): (() => void) => {
-  const channel = IPC_EVENT_CHANNELS[method]
-  if (callback.length === 0) {
-    return onNoPayload(channel, callback as () => void)
-  }
-  return on(channel, callback as (payload: IpcEventPayload<K>) => void)
-}
-
 // Custom APIs for renderer
 const api: IpcApi = {
   ...invokeApi,
+  ...eventApi,
 
   getSettings: <T = unknown>(key: string) => {
     return invokeApi.getSettings(key) as Promise<IpcResponse<T>>
   },
   saveSettings: <T>(key: string, value: T) => {
     return invokeApi.saveSettings(key, value)
-  },
-
-  onUpdateAvailable: (callback) => {
-    return onEvent('onUpdateAvailable', callback)
-  },
-  onUpdateDownloaded: (callback) => {
-    return onEvent('onUpdateDownloaded', callback)
-  },
-  onDownloadProgress: (callback) => {
-    return onEvent('onDownloadProgress', callback)
-  },
-  onUpdateError: (callback) => {
-    return onEvent('onUpdateError', callback)
-  },
-  onCheckingForUpdate: (callback) => {
-    return onEvent('onCheckingForUpdate', callback)
-  },
-  onUpdateNotAvailable: (callback) => {
-    return onEvent('onUpdateNotAvailable', callback)
   }
 }
 

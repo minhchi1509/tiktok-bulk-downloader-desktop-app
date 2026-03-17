@@ -1,16 +1,17 @@
-import TiktokService from '@shared/services/tiktok.service'
-import {
-  IPC_EVENT_CHANNELS,
-  IPC_INVOKE_CHANNELS,
-  IpcInvokeHandlers,
-  IpcInvokeMethod
-} from '@shared/types/ipc.type'
 import { ipcMain, dialog, app, BrowserWindow } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import axios from 'axios'
 import { pipeline } from 'stream/promises'
 import { autoUpdater } from 'electron-updater'
+
+import { IPC_EVENT_CHANNELS } from '@shared/types/ipc/ipc-event.type'
+import TiktokService from '@shared/services/tiktok.service'
+import {
+  IpcInvokeHandlers,
+  IPC_INVOKE_CHANNELS,
+  IpcInvokeMethod
+} from '@shared/types/ipc/ipc-invoke.type'
 
 autoUpdater.autoDownload = false
 autoUpdater.autoInstallOnAppQuit = true

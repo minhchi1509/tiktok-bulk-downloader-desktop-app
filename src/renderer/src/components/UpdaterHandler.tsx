@@ -9,7 +9,7 @@ import {
   Progress,
   useDisclosure
 } from '@heroui/react'
-import { UpdateAvailableInfo } from '@shared/types/ipc.type'
+import { UpdateAvailableInfo } from '@shared/types/ipc/ipc-event.type'
 
 type UpdateStatus =
   | 'idle'
