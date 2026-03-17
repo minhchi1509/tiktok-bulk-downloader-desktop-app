@@ -9,6 +9,7 @@ import {
   Progress,
   useDisclosure
 } from '@heroui/react'
+import { UpdateAvailableInfo } from '@shared/types/ipc.type'
 
 type UpdateStatus =
   | 'idle'
@@ -23,7 +24,7 @@ const UpdaterHandler = () => {
   const { isOpen, onOpen, onOpenChange, onClose } = useDisclosure()
   const [status, setStatus] = useState<UpdateStatus>('idle')
   const [progress, setProgress] = useState(0)
-  const [updateInfo, setUpdateInfo] = useState<any>(null)
+  const [updateInfo, setUpdateInfo] = useState<UpdateAvailableInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -62,13 +63,12 @@ const UpdaterHandler = () => {
     })
 
     return () => {
-      // Cleanup not strictly necessary since api.on... returns undefined in my implementation?
-      // Wait, I implemented it as `ipcRenderer.on`. `ipcRenderer.on` returns `IpcRenderer`.
-      // My preload wrapper:
-      // onUpdateAvailable: (callback) => { ipcRenderer.on(..., callback) }
-      // This doesn't return a cleanup function.
-      // I should have made it return a cleanup function in preload if I wanted to clean up.
-      // But for a global handler, it's fine.
+      removeUpdateAvailable()
+      removeUpdateDownloaded()
+      removeDownloadProgress()
+      removeUpdateError()
+      removeChecking()
+      removeNotAvailable()
     }
   }, [])
 

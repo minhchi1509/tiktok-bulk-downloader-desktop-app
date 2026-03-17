@@ -1,12 +1,10 @@
-import { IPC_CHANNELS } from '@shared/constants'
 import TiktokService from '@shared/services/tiktok.service'
 import {
-  IDownloadFileOptions,
-  IpcGetAwemeDetailsOptions,
-  IpcGetAwemeListOptions,
-  IpcResponse
+  IPC_EVENT_CHANNELS,
+  IPC_INVOKE_CHANNELS,
+  IpcInvokeHandlers,
+  IpcInvokeMethod
 } from '@shared/types/ipc.type'
-import { IAwemeDetails, IAwemeListResponse, IUserInfo } from '@shared/types/tiktok.type'
 import { ipcMain, dialog, app, BrowserWindow } from 'electron'
 import fs from 'fs'
 import path from 'path'
@@ -21,14 +19,21 @@ interface ISetupIpcHandlersOptions {
   mainWindow: () => BrowserWindow | null
 }
 
+const registerInvokeHandlers = (handlers: IpcInvokeHandlers) => {
+  for (const method of Object.keys(IPC_INVOKE_CHANNELS) as IpcInvokeMethod[]) {
+    ipcMain.handle(IPC_INVOKE_CHANNELS[method], (_event, ...args) => {
+      const handler = handlers[method] as (...handlerArgs: unknown[]) => Promise<unknown>
+      return handler(...args)
+    })
+  }
+}
+
 const setupIpcHandlers = ({ mainWindow }: ISetupIpcHandlersOptions) => {
-  ipcMain.handle(
-    IPC_CHANNELS.GET_USER_AWEME_LIST,
-    async (
-      _event,
-      secUid: string,
-      options: IpcGetAwemeListOptions
-    ): Promise<IpcResponse<IAwemeListResponse>> => {
+  // Settings handlers share the same file path.
+  const settingsPath = path.join(app.getPath('userData'), 'settings.json')
+
+  const invokeHandlers: IpcInvokeHandlers = {
+    getUserAwemeList: async (secUid, options) => {
       try {
         const data = await TiktokService.getUserAwemeList(secUid, options)
         return {
@@ -41,16 +46,9 @@ const setupIpcHandlers = ({ mainWindow }: ISetupIpcHandlersOptions) => {
           error: (error as Error).message
         }
       }
-    }
-  )
+    },
 
-  ipcMain.handle(
-    IPC_CHANNELS.GET_USER_INFO,
-    async (
-      _event,
-      username: string,
-      options?: IpcGetAwemeDetailsOptions
-    ): Promise<IpcResponse<IUserInfo>> => {
+    getUserInfo: async (username, options) => {
       try {
         const userInfo = await TiktokService.getUserInfoByUsername(username, options)
         return {
@@ -63,16 +61,9 @@ const setupIpcHandlers = ({ mainWindow }: ISetupIpcHandlersOptions) => {
           error: (error as Error).message
         }
       }
-    }
-  )
+    },
 
-  ipcMain.handle(
-    IPC_CHANNELS.GET_MULTI_AWEME_DETAILS,
-    async (
-      _event,
-      awemeIds: string[],
-      options?: IpcGetAwemeDetailsOptions
-    ): Promise<IpcResponse<Record<string, IAwemeDetails>>> => {
+    getMultiAwemeDetails: async (awemeIds, options) => {
       try {
         const awemeDetails = await TiktokService.getMultiAwemeDetails(awemeIds, options)
         return {
@@ -85,26 +76,23 @@ const setupIpcHandlers = ({ mainWindow }: ISetupIpcHandlersOptions) => {
           error: (error as Error).message
         }
       }
-    }
-  )
+    },
 
-  ipcMain.handle(IPC_CHANNELS.SELECT_FOLDER, async (): Promise<IpcResponse<string | null>> => {
-    try {
-      const { canceled, filePaths } = await dialog.showOpenDialog({
-        properties: ['openDirectory']
-      })
-      if (canceled) {
-        return { success: true, data: null }
+    selectFolder: async () => {
+      try {
+        const { canceled, filePaths } = await dialog.showOpenDialog({
+          properties: ['openDirectory']
+        })
+        if (canceled) {
+          return { success: true, data: null }
+        }
+        return { success: true, data: filePaths[0] }
+      } catch (error) {
+        return { success: false, error: (error as Error).message }
       }
-      return { success: true, data: filePaths[0] }
-    } catch (error) {
-      return { success: false, error: (error as Error).message }
-    }
-  })
+    },
 
-  ipcMain.handle(
-    IPC_CHANNELS.DOWNLOAD_FILE,
-    async (_event, options: IDownloadFileOptions): Promise<IpcResponse<boolean>> => {
+    downloadFile: async (options) => {
       try {
         const { url, fileName, folderPath } = options
         if (!fs.existsSync(folderPath)) {
@@ -120,23 +108,17 @@ const setupIpcHandlers = ({ mainWindow }: ISetupIpcHandlersOptions) => {
       } catch (error) {
         return { success: false, error: (error as Error).message }
       }
-    }
-  )
+    },
 
-  ipcMain.handle(IPC_CHANNELS.GET_DEFAULT_DOWNLOAD_PATH, async (): Promise<IpcResponse<string>> => {
-    return { success: true, data: app.getPath('downloads') }
-  })
+    getDefaultDownloadPath: async () => {
+      return { success: true, data: app.getPath('downloads') }
+    },
 
-  // Settings Handlers
-  const settingsPath = path.join(app.getPath('userData'), 'settings.json')
-
-  ipcMain.handle(
-    IPC_CHANNELS.GET_SETTINGS,
-    async (_event, key: string): Promise<IpcResponse<any>> => {
+    getSettings: async (key) => {
       try {
         if (fs.existsSync(settingsPath)) {
           const data = fs.readFileSync(settingsPath, 'utf-8')
-          const settings = JSON.parse(data)
+          const settings = JSON.parse(data) as Record<string, unknown>
           return {
             success: true,
             data: settings[key]
@@ -146,73 +128,71 @@ const setupIpcHandlers = ({ mainWindow }: ISetupIpcHandlersOptions) => {
         return { success: false, error: 'Failed to read settings' }
       }
       return { success: true, data: null }
-    }
-  )
+    },
 
-  ipcMain.handle(
-    IPC_CHANNELS.SAVE_SETTINGS,
-    async (_event, key: string, value: any): Promise<void> => {
+    saveSettings: async (key, value) => {
       try {
-        let settings = {}
+        let settings: Record<string, unknown> = {}
         if (fs.existsSync(settingsPath)) {
           const data = fs.readFileSync(settingsPath, 'utf-8')
-          settings = JSON.parse(data)
+          settings = JSON.parse(data) as Record<string, unknown>
         }
         settings[key] = value
         fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2))
       } catch (error) {
         console.error('Error saving settings:', error)
       }
+    },
+
+    checkForUpdates: async () => {
+      if (!app.isPackaged) {
+        // In dev mode, we might want to log or mock.
+        console.log('Skipping update check in dev mode')
+        return
+      }
+      await autoUpdater.checkForUpdatesAndNotify()
+    },
+
+    downloadUpdate: async () => {
+      await autoUpdater.downloadUpdate()
+    },
+
+    quitAndInstall: async () => {
+      autoUpdater.quitAndInstall(false, true)
     }
-  )
+  }
 
-  // Auto Updater Handlers
-  ipcMain.handle(IPC_CHANNELS.CHECK_FOR_UPDATES, async () => {
-    if (!app.isPackaged) {
-      // In dev mode, we might want to log or mock
-      console.log('Skipping update check in dev mode')
-      return
-    }
-    return autoUpdater.checkForUpdatesAndNotify()
-  })
-
-  ipcMain.handle(IPC_CHANNELS.DOWNLOAD_UPDATE, async () => {
-    return autoUpdater.downloadUpdate()
-  })
-
-  ipcMain.handle(IPC_CHANNELS.QUIT_AND_INSTALL, async () => {
-    autoUpdater.quitAndInstall(false, true)
-  })
+  registerInvokeHandlers(invokeHandlers)
 
   // Auto Updater Events
   autoUpdater.on('checking-for-update', () => {
     const win = mainWindow()
-    win?.webContents.send(IPC_CHANNELS.CHECKING_FOR_UPDATE)
+    win?.webContents.send(IPC_EVENT_CHANNELS.onCheckingForUpdate)
   })
 
   autoUpdater.on('update-available', (info) => {
     const win = mainWindow()
-    win?.webContents.send(IPC_CHANNELS.UPDATE_AVAILABLE, info)
+    win?.webContents.send(IPC_EVENT_CHANNELS.onUpdateAvailable, info)
   })
 
   autoUpdater.on('update-not-available', () => {
     const win = mainWindow()
-    win?.webContents.send(IPC_CHANNELS.UPDATE_NOT_AVAILABLE)
+    win?.webContents.send(IPC_EVENT_CHANNELS.onUpdateNotAvailable)
   })
 
   autoUpdater.on('error', (err) => {
     const win = mainWindow()
-    win?.webContents.send(IPC_CHANNELS.UPDATE_ERROR, err)
+    win?.webContents.send(IPC_EVENT_CHANNELS.onUpdateError, err)
   })
 
   autoUpdater.on('download-progress', (progressObj) => {
     const win = mainWindow()
-    win?.webContents.send(IPC_CHANNELS.DOWNLOAD_PROGRESS, progressObj)
+    win?.webContents.send(IPC_EVENT_CHANNELS.onDownloadProgress, progressObj)
   })
 
   autoUpdater.on('update-downloaded', (info) => {
     const win = mainWindow()
-    win?.webContents.send(IPC_CHANNELS.UPDATE_DOWNLOADED, info)
+    win?.webContents.send(IPC_EVENT_CHANNELS.onUpdateDownloaded, info)
   })
 }
 

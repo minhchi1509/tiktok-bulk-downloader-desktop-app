@@ -1,63 +1,79 @@
-import { IpcApi } from '@shared/types/ipc.type'
+import {
+  IPC_EVENT_CHANNELS,
+  IPC_INVOKE_CHANNELS,
+  IpcApi,
+  IpcEventMethod,
+  IpcEventPayload,
+  IpcInvokeHandlers,
+  IpcInvokeMethod,
+  IpcResponse
+} from '@shared/types/ipc.type'
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import { IPC_CHANNELS } from '@shared/constants'
+
+const invokeApi: IpcInvokeHandlers = new Proxy({} as IpcInvokeHandlers, {
+  get(_target, method) {
+    return (...args: unknown[]) => {
+      return ipcRenderer.invoke(IPC_INVOKE_CHANNELS[method as IpcInvokeMethod], ...args)
+    }
+  }
+})
+
+const on = <T>(channel: string, callback: (payload: T) => void): (() => void) => {
+  const listener = (_event: Electron.IpcRendererEvent, payload: T) => callback(payload)
+  ipcRenderer.on(channel, listener)
+  return () => {
+    ipcRenderer.removeListener(channel, listener)
+  }
+}
+
+const onNoPayload = (channel: string, callback: () => void): (() => void) => {
+  const listener = () => callback()
+  ipcRenderer.on(channel, listener)
+  return () => {
+    ipcRenderer.removeListener(channel, listener)
+  }
+}
+
+const onEvent = <K extends IpcEventMethod>(
+  method: K,
+  callback: IpcEventPayload<K> extends void ? () => void : (payload: IpcEventPayload<K>) => void
+): (() => void) => {
+  const channel = IPC_EVENT_CHANNELS[method]
+  if (callback.length === 0) {
+    return onNoPayload(channel, callback as () => void)
+  }
+  return on(channel, callback as (payload: IpcEventPayload<K>) => void)
+}
 
 // Custom APIs for renderer
 const api: IpcApi = {
-  getUserInfo: (username, options) => {
-    return ipcRenderer.invoke(IPC_CHANNELS.GET_USER_INFO, username, options)
-  },
-  getUserAwemeList: (secUid, options) => {
-    return ipcRenderer.invoke(IPC_CHANNELS.GET_USER_AWEME_LIST, secUid, options)
-  },
-  getMultiAwemeDetails: (awemeIds, options) => {
-    return ipcRenderer.invoke(IPC_CHANNELS.GET_MULTI_AWEME_DETAILS, awemeIds, options)
-  },
-  selectFolder: () => {
-    return ipcRenderer.invoke(IPC_CHANNELS.SELECT_FOLDER)
-  },
-  downloadFile: (options) => {
-    return ipcRenderer.invoke(IPC_CHANNELS.DOWNLOAD_FILE, options)
-  },
-  getDefaultDownloadPath: () => {
-    return ipcRenderer.invoke(IPC_CHANNELS.GET_DEFAULT_DOWNLOAD_PATH)
-  },
+  ...invokeApi,
 
-  getSettings: (key: string) => {
-    return ipcRenderer.invoke(IPC_CHANNELS.GET_SETTINGS, key)
+  getSettings: <T = unknown>(key: string) => {
+    return invokeApi.getSettings(key) as Promise<IpcResponse<T>>
   },
   saveSettings: <T>(key: string, value: T) => {
-    return ipcRenderer.invoke(IPC_CHANNELS.SAVE_SETTINGS, key, value)
+    return invokeApi.saveSettings(key, value)
   },
 
-  // Auto Updater
-  checkForUpdates: () => {
-    return ipcRenderer.invoke(IPC_CHANNELS.CHECK_FOR_UPDATES)
-  },
-  downloadUpdate: () => {
-    return ipcRenderer.invoke(IPC_CHANNELS.DOWNLOAD_UPDATE)
-  },
-  quitAndInstall: () => {
-    return ipcRenderer.invoke(IPC_CHANNELS.QUIT_AND_INSTALL)
-  },
   onUpdateAvailable: (callback) => {
-    ipcRenderer.on(IPC_CHANNELS.UPDATE_AVAILABLE, (_event, info) => callback(info))
+    return onEvent('onUpdateAvailable', callback)
   },
   onUpdateDownloaded: (callback) => {
-    ipcRenderer.on(IPC_CHANNELS.UPDATE_DOWNLOADED, (_event, info) => callback(info))
+    return onEvent('onUpdateDownloaded', callback)
   },
   onDownloadProgress: (callback) => {
-    ipcRenderer.on(IPC_CHANNELS.DOWNLOAD_PROGRESS, (_event, progress) => callback(progress))
+    return onEvent('onDownloadProgress', callback)
   },
   onUpdateError: (callback) => {
-    ipcRenderer.on(IPC_CHANNELS.UPDATE_ERROR, (_event, error) => callback(error))
+    return onEvent('onUpdateError', callback)
   },
   onCheckingForUpdate: (callback) => {
-    ipcRenderer.on(IPC_CHANNELS.CHECKING_FOR_UPDATE, () => callback())
+    return onEvent('onCheckingForUpdate', callback)
   },
   onUpdateNotAvailable: (callback) => {
-    ipcRenderer.on(IPC_CHANNELS.UPDATE_NOT_AVAILABLE, () => callback())
+    return onEvent('onUpdateNotAvailable', callback)
   }
 }
 
