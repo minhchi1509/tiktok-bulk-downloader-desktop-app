@@ -176,9 +176,9 @@ const setupIpcHandlers = ({ mainWindow }: ISetupIpcHandlersOptions) => {
     win?.webContents.send(IPC_EVENT_CHANNELS.onUpdateAvailable, info)
   })
 
-  autoUpdater.on('update-not-available', () => {
+  autoUpdater.on('update-not-available', (info) => {
     const win = mainWindow()
-    win?.webContents.send(IPC_EVENT_CHANNELS.onUpdateNotAvailable)
+    win?.webContents.send(IPC_EVENT_CHANNELS.onUpdateNotAvailable, info)
   })
 
   autoUpdater.on('error', (err) => {

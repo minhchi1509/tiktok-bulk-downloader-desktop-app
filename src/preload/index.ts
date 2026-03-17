@@ -9,11 +9,6 @@ import {
 } from '@shared/types/ipc/ipc-invoke.type'
 import { IpcApi } from '@shared/types/ipc'
 
-const NO_PAYLOAD_EVENTS: Set<IpcEventMethod> = new Set([
-  'onCheckingForUpdate',
-  'onUpdateNotAvailable'
-])
-
 const createIpcProxy = <T extends object>(
   resolver: (method: string) => (...args: unknown[]) => unknown
 ): T => {
@@ -35,9 +30,9 @@ const eventApi = createIpcProxy<IpcEventApi>((method) => {
     const callback = args[0] as (...callbackArgs: unknown[]) => void
     const eventMethod = method as IpcEventMethod
     const channel = IPC_EVENT_CHANNELS[eventMethod]
-    const listener = NO_PAYLOAD_EVENTS.has(eventMethod)
-      ? () => callback()
-      : (_event: Electron.IpcRendererEvent, payload: unknown) => callback(payload)
+    const listener = (_event: Electron.IpcRendererEvent, ...args: unknown[]) => {
+      callback(...args)
+    }
 
     ipcRenderer.on(channel, listener)
 
