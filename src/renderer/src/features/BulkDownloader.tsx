@@ -31,6 +31,7 @@ import {
 } from '@tanstack/react-table'
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { IAwemeDetails, IUserInfo } from '@shared/types/tiktok.type'
+import { promisePool } from '@shared/utils/common.util'
 import {
   Search,
   Download,
@@ -413,17 +414,16 @@ const BulkDownloader = () => {
     })
     const userFolderPath = `${currentFolderPath}/${safeUsername}`
 
-    // Batch processing
-    const batchSizeNum = parseInt(batchSize) || 1
+    const maxConcurrency = Math.max(1, parseInt(batchSize) || 1)
+    const currentFailedItems: { item: IAwemeDetails; error: string }[] = []
 
-    for (let i = 0; i < selectedRows.length; i += batchSizeNum) {
-      if (isCancelDownloadRef.current) break
+    await promisePool({
+      items: selectedRows,
+      concurrency: maxConcurrency,
+      worker: async (row, globalIndex) => {
+        if (isCancelDownloadRef.current) return
 
-      const batch = selectedRows.slice(i, i + batchSizeNum)
-
-      const downloadPromises = batch.map(async (row, batchIndex) => {
         const item = row.original
-        const globalIndex = i + batchIndex
 
         try {
           if (item.type === 'VIDEO' && item.video) {
@@ -454,17 +454,17 @@ const BulkDownloader = () => {
             )
           }
         } catch (e) {
-          setFailedItems((prev) => [...prev, { item, error: (e as Error).message }])
+          const failedItem = { item, error: (e as Error).message }
+          currentFailedItems.push(failedItem)
+          setFailedItems((prev) => [...prev, failedItem])
         } finally {
           setDownloadProgress((prev) => ({ ...prev, current: prev.current + 1 }))
         }
-      })
+      }
+    })
 
-      await Promise.all(downloadPromises)
-    }
-
-    if (failedItems.length > 0) {
-      showErrorToast(`Completed with ${failedItems.length} errors.`)
+    if (currentFailedItems.length > 0) {
+      showErrorToast(`Completed with ${currentFailedItems.length} errors.`)
     }
 
     setDownloading(false)
@@ -571,7 +571,7 @@ const BulkDownloader = () => {
             </Select>
 
             <Input
-              label="Download concurrency (batch size)"
+              label="Download concurrency"
               value={batchSize}
               onValueChange={setBatchSize}
               className="grow max-w-xs"

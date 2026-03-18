@@ -1,5 +1,7 @@
 import { ipcMain, dialog, app, BrowserWindow } from 'electron'
 import fs from 'fs'
+import http from 'http'
+import https from 'https'
 import path from 'path'
 import axios from 'axios'
 import { pipeline } from 'stream/promises'
@@ -15,6 +17,25 @@ import {
 
 autoUpdater.autoDownload = false
 autoUpdater.autoInstallOnAppQuit = true
+
+const httpAgent = new http.Agent({
+  keepAlive: true,
+  maxSockets: 64,
+  maxFreeSockets: 16
+})
+
+const httpsAgent = new https.Agent({
+  keepAlive: true,
+  maxSockets: 64,
+  maxFreeSockets: 16
+})
+
+const downloadClient = axios.create({
+  timeout: 30000,
+  maxRedirects: 5,
+  httpAgent,
+  httpsAgent
+})
 
 interface ISetupIpcHandlersOptions {
   mainWindow: () => BrowserWindow | null
@@ -94,19 +115,29 @@ const setupIpcHandlers = ({ mainWindow }: ISetupIpcHandlersOptions) => {
     },
 
     downloadFile: async (options) => {
+      let filePath = ''
       try {
         const { url, fileName, folderPath } = options
-        if (!fs.existsSync(folderPath)) {
-          fs.mkdirSync(folderPath, { recursive: true })
-        }
-        const filePath = path.join(folderPath, fileName)
+        await fs.promises.mkdir(folderPath, { recursive: true })
+        filePath = path.join(folderPath, fileName)
 
-        const response = await axios.get(url, { responseType: 'stream' })
-        const writer = fs.createWriteStream(filePath)
+        const response = await downloadClient.get(url, {
+          responseType: 'stream',
+          headers: {
+            // Avoid compressed transfer for binary media downloads.
+            'Accept-Encoding': 'identity'
+          }
+        })
+        const writer = fs.createWriteStream(filePath, {
+          highWaterMark: 1024 * 1024
+        })
 
         await pipeline(response.data, writer)
         return { success: true, data: true }
       } catch (error) {
+        if (filePath && fs.existsSync(filePath)) {
+          await fs.promises.unlink(filePath).catch(() => undefined)
+        }
         return { success: false, error: (error as Error).message }
       }
     },
