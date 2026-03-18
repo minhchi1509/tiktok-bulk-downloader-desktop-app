@@ -21,11 +21,10 @@ type UpdateStatus =
   | 'not-available'
 
 const UpdaterHandler = () => {
-  const { isOpen, onOpen, onOpenChange, onClose } = useDisclosure()
+  const { isOpen, onOpen, onOpenChange } = useDisclosure()
   const [status, setStatus] = useState<UpdateStatus>('idle')
   const [progress, setProgress] = useState(0)
   const [updateInfo, setUpdateInfo] = useState<UpdateAvailableInfo | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     // Listeners
@@ -35,7 +34,7 @@ const UpdaterHandler = () => {
       onOpen()
     })
 
-    const removeUpdateDownloaded = window.api.onUpdateDownloaded((info) => {
+    const removeUpdateDownloaded = window.api.onUpdateDownloaded(() => {
       setStatus('ready')
       onOpen() // Re-open or ensure open
     })
@@ -47,7 +46,6 @@ const UpdaterHandler = () => {
 
     const removeUpdateError = window.api.onUpdateError((err) => {
       setStatus('error')
-      setError(err.message || 'Unknown error')
       console.error(err)
       // Optional: Show toast or modal
     })
@@ -107,7 +105,12 @@ const UpdaterHandler = () => {
         <>
           <ModalHeader className="flex flex-col gap-1">Downloading Update...</ModalHeader>
           <ModalBody>
-            <Progress value={progress} showValueLabel={true} label="Downloading..." />
+            <Progress
+              value={progress}
+              showValueLabel={true}
+              label="Downloading..."
+              aria-label="Update download progress"
+            />
           </ModalBody>
           <ModalFooter>
             {/* Can't really cancel easily with electron-updater without cancellation token logic, so just hide button or disable */}
@@ -156,6 +159,7 @@ const UpdaterHandler = () => {
 
   return (
     <Modal
+      aria-label="Application update dialog"
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       isDismissable={false}

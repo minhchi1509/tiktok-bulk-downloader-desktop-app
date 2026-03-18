@@ -9,38 +9,30 @@ import {
 } from '@shared/types/ipc/ipc-invoke.type'
 import { IpcApi } from '@shared/types/ipc'
 
-const createIpcProxy = <T extends object>(
-  resolver: (method: string) => (...args: unknown[]) => unknown
-): T => {
-  return new Proxy({} as object, {
-    get(_target, method) {
-      return resolver(String(method))
+const invokeApi = Object.fromEntries(
+  (Object.keys(IPC_INVOKE_CHANNELS) as IpcInvokeMethod[]).map((method) => [
+    method,
+    (...args: unknown[]) => ipcRenderer.invoke(IPC_INVOKE_CHANNELS[method], ...args)
+  ])
+) as IpcInvokeHandlers
+
+const eventApi = Object.fromEntries(
+  (Object.keys(IPC_EVENT_CHANNELS) as IpcEventMethod[]).map((method) => [
+    method,
+    (callback: (...callbackArgs: unknown[]) => void) => {
+      const channel = IPC_EVENT_CHANNELS[method]
+      const listener = (_event: Electron.IpcRendererEvent, ...eventArgs: unknown[]) => {
+        callback(...eventArgs)
+      }
+
+      ipcRenderer.on(channel, listener)
+
+      return () => {
+        ipcRenderer.removeListener(channel, listener)
+      }
     }
-  }) as T
-}
-
-const invokeApi = createIpcProxy<IpcInvokeHandlers>((method) => {
-  return (...args: unknown[]) => {
-    return ipcRenderer.invoke(IPC_INVOKE_CHANNELS[method as IpcInvokeMethod], ...args)
-  }
-})
-
-const eventApi = createIpcProxy<IpcEventApi>((method) => {
-  return (...args: unknown[]) => {
-    const callback = args[0] as (...callbackArgs: unknown[]) => void
-    const eventMethod = method as IpcEventMethod
-    const channel = IPC_EVENT_CHANNELS[eventMethod]
-    const listener = (_event: Electron.IpcRendererEvent, ...args: unknown[]) => {
-      callback(...args)
-    }
-
-    ipcRenderer.on(channel, listener)
-
-    return () => {
-      ipcRenderer.removeListener(channel, listener)
-    }
-  }
-})
+  ])
+) as IpcEventApi
 
 // Custom APIs for renderer
 const api: IpcApi = {
