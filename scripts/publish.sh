@@ -85,7 +85,7 @@ echo "Bumping version using: ${release_type}"
 npm version "$release_type" --no-git-tag-version
 
 new_version="$(node -p "require('./package.json').version")"
-commit_message="publish to ${new_version}"
+commit_message="Release version ${new_version}"
 tag_name="v${new_version}"
 
 git add package.json
