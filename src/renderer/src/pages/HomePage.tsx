@@ -22,7 +22,7 @@ export default function HomePage() {
             <BulkDownloader />
           </div>
         </Tab>
-        <Tab key="single" title="Single Download">
+        <Tab key="single" title="Multi-URLs Download">
           <div className="pt-4 h-full">
             <SingleDownloader />
           </div>

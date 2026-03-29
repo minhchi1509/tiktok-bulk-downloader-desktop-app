@@ -1,41 +1,21 @@
 import { ipcMain, dialog, app, BrowserWindow } from 'electron'
 import fs from 'fs'
-import http from 'http'
-import https from 'https'
 import path from 'path'
-import axios from 'axios'
-import { pipeline } from 'stream/promises'
 import { autoUpdater } from 'electron-updater'
 
 import { IPC_EVENT_CHANNELS } from '@shared/types/ipc/ipc-event.type'
-import TiktokService from '@shared/services/tiktok.service'
+import TiktokApi from '@shared/api/tiktok.api'
 import {
   IpcInvokeHandlers,
   IPC_INVOKE_CHANNELS,
   IpcInvokeMethod
 } from '@shared/types/ipc/ipc-invoke.type'
+import FileUtils from '@shared/utils/file.util'
+import { pipeline } from 'stream/promises'
+import { downloadClient } from '@shared/configs/download-client'
 
 autoUpdater.autoDownload = false
 autoUpdater.autoInstallOnAppQuit = true
-
-const httpAgent = new http.Agent({
-  keepAlive: true,
-  maxSockets: 64,
-  maxFreeSockets: 16
-})
-
-const httpsAgent = new https.Agent({
-  keepAlive: true,
-  maxSockets: 64,
-  maxFreeSockets: 16
-})
-
-const downloadClient = axios.create({
-  timeout: 30000,
-  maxRedirects: 5,
-  httpAgent,
-  httpsAgent
-})
 
 interface ISetupIpcHandlersOptions {
   mainWindow: () => BrowserWindow | null
@@ -57,7 +37,7 @@ const setupIpcHandlers = ({ mainWindow }: ISetupIpcHandlersOptions) => {
   const invokeHandlers: IpcInvokeHandlers = {
     getUserAwemeList: async (secUid, options) => {
       try {
-        const data = await TiktokService.getUserAwemeList(secUid, options)
+        const data = await TiktokApi.getUserAwemeList(secUid, options)
         return {
           success: true,
           data
@@ -72,7 +52,7 @@ const setupIpcHandlers = ({ mainWindow }: ISetupIpcHandlersOptions) => {
 
     getUserInfo: async (username, options) => {
       try {
-        const userInfo = await TiktokService.getUserInfoByUsername(username, options)
+        const userInfo = await TiktokApi.getUserInfoByUsername(username, options)
         return {
           success: true,
           data: userInfo
@@ -87,7 +67,7 @@ const setupIpcHandlers = ({ mainWindow }: ISetupIpcHandlersOptions) => {
 
     getMultiAwemeDetails: async (awemeIds, options) => {
       try {
-        const awemeDetails = await TiktokService.getMultiAwemeDetails(awemeIds, options)
+        const awemeDetails = await TiktokApi.getMultiAwemeDetails(awemeIds, options)
         return {
           success: true,
           data: awemeDetails
@@ -116,28 +96,46 @@ const setupIpcHandlers = ({ mainWindow }: ISetupIpcHandlersOptions) => {
 
     downloadFile: async (options) => {
       let filePath = ''
+
       try {
-        const { url, fileName, folderPath } = options
-        await fs.promises.mkdir(folderPath, { recursive: true })
+        const { url, fileName, folderPath, retryCount = 100 } = options
+        await FileUtils.ensureDirectory(folderPath)
         filePath = path.join(folderPath, fileName)
 
-        const response = await downloadClient.get(url, {
-          responseType: 'stream',
-          headers: {
-            // Avoid compressed transfer for binary media downloads.
-            'Accept-Encoding': 'identity'
-          }
-        })
-        const writer = fs.createWriteStream(filePath, {
-          highWaterMark: 1024 * 1024
-        })
+        const normalizedRetryCount = Number.isFinite(retryCount)
+          ? Math.max(0, Math.trunc(retryCount))
+          : 0
+        // retryCount means additional retries and does not include the first attempt.
+        const totalAttempts = normalizedRetryCount + 1
 
-        await pipeline(response.data, writer)
-        return { success: true, data: true }
-      } catch (error) {
-        if (filePath && fs.existsSync(filePath)) {
-          await fs.promises.unlink(filePath).catch(() => undefined)
+        let lastError: Error | null = null
+        for (let attempt = 1; attempt <= totalAttempts; attempt += 1) {
+          try {
+            const response = await downloadClient.get(url, {
+              responseType: 'stream',
+              headers: {
+                // Avoid compressed transfer for binary media downloads.
+                'Accept-Encoding': 'identity'
+              }
+            })
+            const writer = FileUtils.createWriteStream(filePath, {
+              highWaterMark: 1024 * 1024
+            })
+
+            await pipeline(response.data, writer)
+            return { success: true, data: true }
+          } catch (error) {
+            lastError = error as Error
+            await FileUtils.deleteFile(filePath)
+          }
         }
+
+        return {
+          success: false,
+          error: lastError?.message ?? 'Failed to download file'
+        }
+      } catch (error) {
+        await FileUtils.deleteFile(filePath)
         return { success: false, error: (error as Error).message }
       }
     },

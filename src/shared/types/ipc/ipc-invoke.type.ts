@@ -17,6 +17,7 @@ export interface IDownloadFileOptions {
   url: string
   fileName: string
   folderPath: string
+  retryCount?: number
 }
 
 export type IpcResponse<T> =

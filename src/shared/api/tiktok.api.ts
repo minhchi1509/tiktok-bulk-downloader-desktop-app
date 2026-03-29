@@ -178,10 +178,10 @@ const getMultiAwemeDetails = async (
   }
 }
 
-const TiktokService = {
+const TiktokApi = {
   getUserInfoByUsername,
   getUserAwemeList,
   getMultiAwemeDetails
 }
 
-export default TiktokService
+export default TiktokApi

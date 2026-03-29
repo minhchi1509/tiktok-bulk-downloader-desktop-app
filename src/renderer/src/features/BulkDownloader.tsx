@@ -373,18 +373,6 @@ const BulkDownloader = () => {
     }
   }
 
-  const getFilename = (item: IAwemeDetails, index: number, ext: string) => {
-    const filename = tiktokUtils.getFilename({
-      order: index + 1,
-      id: item.id,
-      title: item.description,
-      timestamp: item.createdAt,
-      format: Array.from(fileNameFormat)
-    })
-
-    return `${filename}.${ext}`
-  }
-
   const handleDownload = async () => {
     // Get sorted and selected rows
     const sortedRows = table.getSortedRowModel().rows
@@ -427,25 +415,36 @@ const BulkDownloader = () => {
 
         try {
           if (item.type === 'VIDEO' && item.video) {
+            const filename = tiktokUtils.getFilename({
+              order: globalIndex + 1,
+              id: item.id,
+              title: item.description,
+              timestamp: item.createdAt,
+              format: Array.from(fileNameFormat)
+            })
             const { success } = await window.api.downloadFile({
               url: item.video.mp4Uri,
-              fileName: getFilename(item, globalIndex, 'mp4'),
+              fileName: `${filename}.mp4`,
               folderPath: userFolderPath
             })
             if (!success) {
               throw new Error('Failed to download video')
             }
           } else if (item.type === 'PHOTO' && item.imagesUri) {
-            const baseName = getFilename(item, globalIndex, 'jpg').replace('.jpg', '')
-            const photoFolderPath = `${userFolderPath}/${baseName}`
-
             // Download photos for a single post concurrently
             await Promise.all(
-              item.imagesUri.map(async (imgUrl, j) => {
+              item.imagesUri.map(async (imgUrl, imgIndex) => {
+                const filename = tiktokUtils.getFilename({
+                  order: `${globalIndex + 1}-${imgIndex + 1}`,
+                  id: item.id,
+                  title: item.description,
+                  timestamp: item.createdAt,
+                  format: Array.from(fileNameFormat)
+                })
                 const { success } = await window.api.downloadFile({
                   url: imgUrl,
-                  fileName: `${j + 1}.jpg`,
-                  folderPath: photoFolderPath
+                  fileName: `${filename}.jpg`,
+                  folderPath: userFolderPath
                 })
                 if (!success) {
                   throw new Error('Failed to download photo')

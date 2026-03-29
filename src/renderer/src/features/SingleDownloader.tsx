@@ -259,7 +259,7 @@ const SingleDownloader = () => {
       <div className="space-y-6">
         <div>
           <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-linear-to-r from-primary to-secondary">
-            Multi-Link Downloader
+            Multi-URLs Downloader
           </h2>
           <p className="text-default-500">Enter multiple TikTok URLs to download them at once.</p>
         </div>
