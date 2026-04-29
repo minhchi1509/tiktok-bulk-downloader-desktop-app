@@ -1,18 +1,9 @@
-import {
-  IAwemeDetails,
-  IAwemeListResponse,
-  IGetAwemeListCursor,
-  IUserInfo
-} from '@shared/types/tiktok.type'
-
-export interface IpcGetAwemeListOptions extends IGetAwemeListCursor {
-  cookie?: string
-}
-
-export interface IpcGetAwemeDetailsOptions {
-  cookie?: string
-}
-
+import type {
+  ITiktokAwemeDetails,
+  ITiktokGetAwemeListResponse,
+  ITiktokUserDetails
+} from '@minhchi1509/social-media-api/types'
+import { TGetAwemeListOptions } from '@shared/types/tiktok.type'
 export interface IDownloadFileOptions {
   url: string
   fileName: string
@@ -39,14 +30,11 @@ type Rpc<Args extends unknown[] = [], Response = void> = {
 
 // Single source of truth for all ipcRenderer.invoke/ipcMain.handle methods.
 export interface IpcInvokeContract {
-  getUserInfo: Rpc<[username: string, options?: IpcGetAwemeDetailsOptions], IpcResponse<IUserInfo>>
-  getUserAwemeList: Rpc<
-    [secUid: string, options?: IpcGetAwemeListOptions],
-    IpcResponse<IAwemeListResponse>
-  >
+  getUserInfo: Rpc<[username: string], IpcResponse<ITiktokUserDetails>>
+  getUserAwemeList: Rpc<[options: TGetAwemeListOptions], IpcResponse<ITiktokGetAwemeListResponse>>
   getMultiAwemeDetails: Rpc<
-    [awemeIds: string[], options?: IpcGetAwemeDetailsOptions],
-    IpcResponse<Record<string, IAwemeDetails>>
+    [awemeIds: string[]],
+    IpcResponse<Record<string, ITiktokAwemeDetails | null>>
   >
   selectFolder: Rpc<[], IpcResponse<string | null>>
   downloadFile: Rpc<[options: IDownloadFileOptions], IpcResponse<boolean>>

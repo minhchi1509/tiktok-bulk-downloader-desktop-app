@@ -5,6 +5,8 @@
     "composite": true,
     "types": ["electron-vite/node"],
     "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "rootDir": ".",
     "paths": {
       "@shared/*": [
         "src/shared/*"

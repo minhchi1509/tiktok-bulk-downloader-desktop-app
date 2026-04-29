@@ -1,6 +1,6 @@
 import { Tabs, Tab } from '@heroui/react'
-import BulkDownloader from '../features/BulkDownloader'
-import SingleDownloader from '../features/SingleDownloader'
+import BulkDownloader from '@renderer/features/BulkDownloader'
+import MultiUrlDownloader from '@renderer/features/MultiUrlDownloader'
 
 export default function HomePage() {
   return (
@@ -24,7 +24,7 @@ export default function HomePage() {
         </Tab>
         <Tab key="single" title="Multi-URLs Download">
           <div className="pt-4 h-full">
-            <SingleDownloader />
+            <MultiUrlDownloader />
           </div>
         </Tab>
       </Tabs>

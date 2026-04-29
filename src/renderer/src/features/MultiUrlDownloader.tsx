@@ -11,15 +11,13 @@ import {
   ScrollShadow
 } from '@heroui/react'
 import { useState, useEffect, useRef } from 'react'
-import { FolderOpen, Download, Check, AlertCircle, Loader2, Save } from 'lucide-react'
-import { IAwemeDetails } from '@shared/types/tiktok.type'
+import { FolderOpen, Download, Check, AlertCircle, Loader2 } from 'lucide-react'
 import { TIKTOK_POST_DETAIL_URL_PATTERN } from '@shared/constants'
 import tiktokUtils, { TFileNameFormatOption } from '@shared/utils/tiktok.util'
-import { showErrorToast, showSuccessToast } from '@renderer/lib/toast'
+import { showErrorToast } from '@renderer/lib/toast'
 import { promisePool } from '@shared/utils/common.util'
-
-const TIKTOK_COOKIE_SETTINGS_KEY = 'tiktok_cookie'
-const SINGLE_CONCURRENCY_SETTINGS_KEY = 'single_concurrency'
+import type { ITiktokAwemeDetails } from '@minhchi1509/social-media-api/types'
+import CookieInput from '@renderer/components/CookieInput'
 
 const FILE_NAME_FORMAT_OPTIONS: Array<{ key: TFileNameFormatOption; label: string }> = [
   { key: 'id', label: 'ID' },
@@ -32,15 +30,13 @@ interface IDownloadItem {
   originalUrl: string
   status: 'pending' | 'downloading' | 'success' | 'error'
   error?: string
-  data?: IAwemeDetails
+  data?: ITiktokAwemeDetails
 }
 
-const SingleDownloader = () => {
+const MultiUrlDownloader = () => {
   const [inputUrls, setInputUrls] = useState('')
   const [folderPath, setFolderPath] = useState('')
   const [fileNameFormat, setFileNameFormat] = useState<Set<TFileNameFormatOption>>(new Set(['id']))
-  const [tiktokCookie, setTiktokCookie] = useState('')
-  const [isSavingCookie, setIsSavingCookie] = useState(false)
   const [concurrentDownloads, setConcurrentDownloads] = useState('5')
   const [isProcessing, setIsProcessing] = useState(false)
   const [downloadQueue, setDownloadQueue] = useState<IDownloadItem[]>([])
@@ -50,49 +46,17 @@ const SingleDownloader = () => {
 
   useEffect(() => {
     const loadInitialSettings = async () => {
-      const [{ data: path }, savedCookieResult, savedConcurrencyResult] = await Promise.all([
-        window.api.getDefaultDownloadPath(),
-        window.api.getSettings<string>(TIKTOK_COOKIE_SETTINGS_KEY),
-        window.api.getSettings<string>(SINGLE_CONCURRENCY_SETTINGS_KEY)
-      ])
-
-      if (path) {
-        setFolderPath(path)
-      }
-
-      if (savedCookieResult?.success && typeof savedCookieResult.data === 'string') {
-        setTiktokCookie(savedCookieResult.data)
-      }
-
-      if (savedConcurrencyResult?.success && savedConcurrencyResult.data) {
-        const parsed = Number.parseInt(String(savedConcurrencyResult.data), 10)
-        if (!Number.isNaN(parsed) && parsed > 0) {
-          setConcurrentDownloads(String(parsed))
-        }
+      const { data: defaultPath } = await window.api.getDefaultDownloadPath()
+      if (defaultPath) {
+        setFolderPath(defaultPath)
       }
     }
 
     loadInitialSettings()
   }, [])
 
-  const handleSaveCookie = async () => {
-    setIsSavingCookie(true)
-    try {
-      await window.api.saveSettings(TIKTOK_COOKIE_SETTINGS_KEY, tiktokCookie.trim())
-      showSuccessToast('TikTok cookie saved successfully')
-    } catch (_error) {
-      showErrorToast('Failed to save TikTok cookie')
-    } finally {
-      setIsSavingCookie(false)
-    }
-  }
-
   const handleConcurrencyChange = (value: string) => {
-    setConcurrentDownloads(value)
-    const parsed = Number.parseInt(value, 10)
-    if (!Number.isNaN(parsed) && parsed > 0) {
-      window.api.saveSettings(SINGLE_CONCURRENCY_SETTINGS_KEY, String(parsed))
-    }
+    setConcurrentDownloads(Number.parseInt(value, 10) ? value : '')
   }
 
   const handleSelectFolder = async () => {
@@ -100,7 +64,7 @@ const SingleDownloader = () => {
     if (path) setFolderPath(path)
   }
 
-  const getFilename = (item: IAwemeDetails, ext: string) => {
+  const getFilename = (item: ITiktokAwemeDetails, ext: string) => {
     const filename = tiktokUtils.getFilename({
       id: item.id,
       title: item.description,
@@ -111,22 +75,26 @@ const SingleDownloader = () => {
     return `${filename}.${ext}`
   }
 
-  const downloadItem = async (dataItem: IAwemeDetails, itemId: string, targetFolder: string) => {
+  const downloadItem = async (
+    dataItem: ITiktokAwemeDetails,
+    itemId: string,
+    targetFolder: string
+  ) => {
     try {
-      if (dataItem.type === 'VIDEO' && dataItem.video) {
+      if (dataItem.contentType === 'VIDEO' && dataItem.video) {
         const { success } = await window.api.downloadFile({
-          url: dataItem.video.mp4Uri,
+          url: dataItem.video.hdPlayUrlList.at(-1) || '',
           fileName: getFilename(dataItem, 'mp4'),
           folderPath: targetFolder
         })
         if (!success) throw new Error('Failed to download video')
-      } else if (dataItem.type === 'PHOTO' && dataItem.imagesUri) {
+      } else if (dataItem.contentType === 'MULTI_PHOTO' && dataItem.imagePost) {
         const baseName = getFilename(dataItem, 'jpg')
         const photoFolderPath = `${targetFolder}/${dataItem.id}`
         await Promise.allSettled(
-          dataItem.imagesUri.map(async (u, k) => {
+          dataItem.imagePost.images.map(async (u, k) => {
             const { success } = await window.api.downloadFile({
-              url: u,
+              url: u.urlList.at(-1) || '',
               fileName: `${k + 1}_${baseName}`,
               folderPath: photoFolderPath
             })
@@ -149,14 +117,8 @@ const SingleDownloader = () => {
 
   const startProcessing = async (
     items: IDownloadItem[],
-    detailsById: Record<string, IAwemeDetails>
+    detailsById: Record<string, ITiktokAwemeDetails | null>
   ) => {
-    let targetFolder = folderPath
-    if (!targetFolder) {
-      targetFolder =
-        (await window.api.getDefaultDownloadPath().then(({ data: path }) => path)) || ''
-    }
-
     const validItems = items.filter((item) => Boolean(detailsById[item.id]))
 
     const maxConcurrency = Math.max(1, Number.parseInt(concurrentDownloads, 10) || 1)
@@ -180,7 +142,7 @@ const SingleDownloader = () => {
         setDownloadQueue((prev) =>
           prev.map((q) => (q.id === item.id ? { ...q, status: 'downloading' } : q))
         )
-        await downloadItem(details, item.id, targetFolder)
+        await downloadItem(details, item.id, folderPath)
       }
     })
 
@@ -220,22 +182,19 @@ const SingleDownloader = () => {
     setIsProcessing(true)
     isCancelledRef.current = false
 
-    const cookie = tiktokCookie.trim()
-    const detailResult = await window.api.getMultiAwemeDetails(
-      newItems.map((item) => item.id),
-      cookie ? { cookie } : undefined
-    )
+    const responseData = await window.api.getMultiAwemeDetails(newItems.map((i) => i.id))
 
-    if (!detailResult.success || !detailResult.data) {
+    if (!responseData.success) {
+      showErrorToast('Failed to fetch post details')
       setIsProcessing(false)
-      showErrorToast(detailResult.error || 'Failed to fetch post details')
       return
     }
 
-    const detailsById = detailResult.data
+    const awemeList = responseData.data
+
     setDownloadQueue((prev) =>
       prev.map((item) => {
-        const details = detailsById[item.id]
+        const details = awemeList[item.id]
         if (!details) {
           return {
             ...item,
@@ -251,7 +210,7 @@ const SingleDownloader = () => {
       })
     )
 
-    startProcessing(newItems, detailsById)
+    startProcessing(newItems, awemeList)
   }
 
   return (
@@ -293,30 +252,7 @@ const SingleDownloader = () => {
                 }
               />
             </Tooltip>
-
-            <Input
-              label="TikTok Cookie (optional)"
-              value={tiktokCookie}
-              onValueChange={setTiktokCookie}
-              className="flex-1"
-              variant="bordered"
-              isDisabled={isProcessing}
-              endContent={
-                <button
-                  type="button"
-                  aria-label="Save TikTok cookie"
-                  onClick={handleSaveCookie}
-                  disabled={isProcessing || isSavingCookie || !tiktokCookie.trim()}
-                  className="flex items-center justify-center text-default-400 disabled:opacity-40 enabled:hover:text-primary"
-                >
-                  {isSavingCookie ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    <Save size={16} />
-                  )}
-                </button>
-              }
-            />
+            <CookieInput className="flex-1" variant="bordered" isDisabled={isProcessing} />
           </div>
 
           <Input
@@ -427,4 +363,4 @@ const SingleDownloader = () => {
   )
 }
 
-export default SingleDownloader
+export default MultiUrlDownloader

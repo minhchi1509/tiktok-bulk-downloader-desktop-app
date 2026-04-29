@@ -30,23 +30,14 @@ import {
   RowSelectionState
 } from '@tanstack/react-table'
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
-import { IAwemeDetails, IUserInfo } from '@shared/types/tiktok.type'
 import { promisePool } from '@shared/utils/common.util'
-import {
-  Search,
-  Download,
-  FolderOpen,
-  StopCircle,
-  ExternalLink,
-  AlertCircle,
-  Save,
-  Loader2
-} from 'lucide-react'
+import { Search, Download, FolderOpen, StopCircle, ExternalLink, AlertCircle } from 'lucide-react'
 import tiktokUtils, { TFileNameFormatOption } from '@shared/utils/tiktok.util'
-import { showErrorToast, showSuccessToast } from '@renderer/lib/toast'
+import { showErrorToast } from '@renderer/lib/toast'
+import type { ITiktokAwemeDetails, ITiktokUserDetails } from '@minhchi1509/social-media-api/types'
+import CookieInput from '@renderer/components/CookieInput'
 
-const columnHelper = createColumnHelper<IAwemeDetails>()
-const TIKTOK_COOKIE_SETTINGS_KEY = 'tiktok_cookie'
+const columnHelper = createColumnHelper<ITiktokAwemeDetails>()
 
 const FILE_NAME_FORMAT_OPTIONS: Array<{ key: TFileNameFormatOption; label: string }> = [
   { key: 'numericalOrder', label: 'Numerical Order' },
@@ -60,8 +51,8 @@ const BulkDownloader = () => {
   const [delay, setDelay] = useState('0')
   const [batchSize, setBatchSize] = useState('15')
   const [loading, setLoading] = useState(false)
-  const [userInfo, setUserInfo] = useState<IUserInfo | null>(null)
-  const [posts, setPosts] = useState<IAwemeDetails[]>([])
+  const [userInfo, setUserInfo] = useState<ITiktokUserDetails | null>(null)
+  const [posts, setPosts] = useState<ITiktokAwemeDetails[]>([])
 
   // Fetch State
   const isCancelGetDataRef = useRef(false)
@@ -82,14 +73,12 @@ const BulkDownloader = () => {
   const [fileNameFormat, setFileNameFormat] = useState<Set<TFileNameFormatOption>>(
     new Set(['numericalOrder', 'id'])
   )
-  const [tiktokCookie, setTiktokCookie] = useState('')
-  const [isSavingCookie, setIsSavingCookie] = useState(false)
   const [downloading, setDownloading] = useState(false)
-  const [failedItems, setFailedItems] = useState<{ item: IAwemeDetails; error: string }[]>([])
+  const [failedItems, setFailedItems] = useState<{ item: ITiktokAwemeDetails; error: string }[]>([])
   const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0 })
 
   // Custom Filter Function
-  const customFilterFn: FilterFn<IAwemeDetails> = (row, columnId, filterValue) => {
+  const customFilterFn: FilterFn<ITiktokAwemeDetails> = (row, columnId, filterValue) => {
     const rowValue = row.getValue(columnId) as string
     if (!filterValue) return true
     return String(rowValue).toLowerCase().includes(String(filterValue).toLowerCase())
@@ -106,7 +95,7 @@ const BulkDownloader = () => {
         enableSorting: false,
         cell: (info) => <span className="text-small font-bold">{info.getValue()}</span>
       }),
-      columnHelper.accessor('type', {
+      columnHelper.accessor('contentType', {
         id: 'type',
         header: 'Type',
         filterFn: (row, id, value) => {
@@ -159,7 +148,7 @@ const BulkDownloader = () => {
           </span>
         )
       }),
-      columnHelper.accessor('stats.likes', {
+      columnHelper.accessor('statistics.diggCount', {
         id: 'likes',
         header: 'Likes',
         enableSorting: true,
@@ -167,7 +156,7 @@ const BulkDownloader = () => {
           <span className="text-tiny">❤️ {Number(info.getValue()).toLocaleString()}</span>
         )
       }),
-      columnHelper.accessor('stats.comments', {
+      columnHelper.accessor('statistics.commentCount', {
         id: 'comments',
         header: 'Comments',
         enableSorting: true,
@@ -175,7 +164,7 @@ const BulkDownloader = () => {
           <span className="text-tiny">💬 {Number(info.getValue()).toLocaleString()}</span>
         )
       }),
-      columnHelper.accessor('stats.views', {
+      columnHelper.accessor('statistics.playCount', {
         id: 'views',
         header: 'Views',
         enableSorting: true,
@@ -183,7 +172,7 @@ const BulkDownloader = () => {
           <span className="text-tiny">👁️ {Number(info.getValue()).toLocaleString()}</span>
         )
       }),
-      columnHelper.accessor('stats.collects', {
+      columnHelper.accessor('statistics.collectCount', {
         id: 'collects',
         header: 'Collects',
         enableSorting: true,
@@ -293,85 +282,55 @@ const BulkDownloader = () => {
     setPageIndex(0)
 
     try {
-      const cookie = tiktokCookie.trim()
-      const requestOptions = cookie ? { cookie } : undefined
-
-      const { data: user, success, error } = await window.api.getUserInfo(username, requestOptions)
-
-      if (!success || !user) {
-        showErrorToast(error)
-        setLoading(false)
-        return
+      const userInfoResponse = await window.api.getUserInfo(username)
+      if (!userInfoResponse.success) {
+        throw new Error(userInfoResponse.error || 'Failed to fetch user info')
       }
-      setUserInfo(user)
+      const userInfo = userInfoResponse.data
+      setUserInfo(userInfo)
 
-      let currentCursor = '0'
+      let currentMinCursor = '0'
       let currentMaxCursor = '0'
       let hasMore = true
 
       while (hasMore && !isCancelGetDataRef.current) {
-        const { success, data: res } = await window.api.getUserAwemeList(user.secUid, {
-          cursor: currentCursor,
-          maxCursor: currentMaxCursor,
-          ...(requestOptions || {})
+        const getUserAwemeListResponse = await window.api.getUserAwemeList({
+          secUid: userInfo.secUid,
+          minCursor: currentMinCursor,
+          maxCursor: currentMaxCursor
         })
 
-        if (!success || !res) {
-          showErrorToast('Failed to fetch user posts')
-          break
+        if (!getUserAwemeListResponse.success) {
+          throw new Error(getUserAwemeListResponse.error || 'Failed to fetch aweme list')
         }
 
-        if (res.pagination.hasMore && res.awemeList.length === 0) {
-          showErrorToast('No more posts available or unable to fetch more posts.')
-          break
-        }
-
-        setPosts((prev) => [...prev, ...res.awemeList])
-        currentCursor = res.pagination.cursor
-        currentMaxCursor = res.pagination.maxCursor
-        hasMore = res.pagination.hasMore
+        setPosts((prev) => [...prev, ...getUserAwemeListResponse.data.awemeList])
+        currentMinCursor = getUserAwemeListResponse.data.pagination.minCursor
+        currentMaxCursor = getUserAwemeListResponse.data.pagination.maxCursor
+        hasMore = getUserAwemeListResponse.data.pagination.hasMore
 
         // Handling delay
         const delayMs = (parseInt(delay) || 0) * 1000
         if (delayMs > 0 && hasMore) await new Promise((r) => setTimeout(r, delayMs))
       }
     } catch (error) {
+      showErrorToast((error as Error).message)
     } finally {
       setLoading(false)
     }
   }
 
-  // Fetch default path and saved cookie on mount
+  // Fetch default path on mount
   useEffect(() => {
     const loadInitialSettings = async () => {
-      const [{ data: path }, savedCookieResult] = await Promise.all([
-        window.api.getDefaultDownloadPath(),
-        window.api.getSettings<string>(TIKTOK_COOKIE_SETTINGS_KEY)
-      ])
-
-      if (path) {
-        setFolderPath(path)
-      }
-
-      if (savedCookieResult?.success && typeof savedCookieResult.data === 'string') {
-        setTiktokCookie(savedCookieResult.data)
+      const { data: defaultPath } = await window.api.getDefaultDownloadPath()
+      if (defaultPath) {
+        setFolderPath(defaultPath)
       }
     }
 
     loadInitialSettings()
   }, [])
-
-  const handleSaveCookie = async () => {
-    setIsSavingCookie(true)
-    try {
-      await window.api.saveSettings(TIKTOK_COOKIE_SETTINGS_KEY, tiktokCookie.trim())
-      showSuccessToast('TikTok cookie saved successfully')
-    } catch (_error) {
-      showErrorToast('Failed to save TikTok cookie')
-    } finally {
-      setIsSavingCookie(false)
-    }
-  }
 
   const handleDownload = async () => {
     // Get sorted and selected rows
@@ -403,7 +362,7 @@ const BulkDownloader = () => {
     const userFolderPath = `${currentFolderPath}/${safeUsername}`
 
     const maxConcurrency = Math.max(1, parseInt(batchSize) || 1)
-    const currentFailedItems: { item: IAwemeDetails; error: string }[] = []
+    const currentFailedItems: { item: ITiktokAwemeDetails; error: string }[] = []
 
     await promisePool({
       items: selectedRows,
@@ -414,7 +373,7 @@ const BulkDownloader = () => {
         const item = row.original
 
         try {
-          if (item.type === 'VIDEO' && item.video) {
+          if (item.contentType === 'VIDEO' && item.video) {
             const filename = tiktokUtils.getFilename({
               order: globalIndex + 1,
               id: item.id,
@@ -423,17 +382,17 @@ const BulkDownloader = () => {
               format: Array.from(fileNameFormat)
             })
             const { success } = await window.api.downloadFile({
-              url: item.video.mp4Uri,
+              url: item.video.hdPlayUrlList.at(-1) || '',
               fileName: `${filename}.mp4`,
               folderPath: userFolderPath
             })
             if (!success) {
               throw new Error('Failed to download video')
             }
-          } else if (item.type === 'PHOTO' && item.imagesUri) {
+          } else if (item.contentType === 'MULTI_PHOTO' && item.imagePost) {
             // Download photos for a single post concurrently
             await Promise.all(
-              item.imagesUri.map(async (imgUrl, imgIndex) => {
+              item.imagePost.images.map(async (img, imgIndex) => {
                 const filename = tiktokUtils.getFilename({
                   order: `${globalIndex + 1}-${imgIndex + 1}`,
                   id: item.id,
@@ -442,7 +401,7 @@ const BulkDownloader = () => {
                   format: Array.from(fileNameFormat)
                 })
                 const { success } = await window.api.downloadFile({
-                  url: imgUrl,
+                  url: img.urlList.at(-1) || '',
                   fileName: `${filename}.jpg`,
                   folderPath: userFolderPath
                 })
@@ -516,28 +475,7 @@ const BulkDownloader = () => {
               />
             </Tooltip>
 
-            <Input
-              label="TikTok Cookie (optional)"
-              value={tiktokCookie}
-              onValueChange={setTiktokCookie}
-              className="w-96"
-              size="sm"
-              endContent={
-                <button
-                  type="button"
-                  aria-label="Save TikTok cookie"
-                  onClick={handleSaveCookie}
-                  disabled={isSavingCookie || !tiktokCookie.trim()}
-                  className="flex items-center justify-center text-default-400 disabled:opacity-40 enabled:hover:text-primary"
-                >
-                  {isSavingCookie ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    <Save size={16} />
-                  )}
-                </button>
-              }
-            />
+            <CookieInput className="w-96" size="sm" />
 
             <Select
               label="Filename Format"
@@ -681,9 +619,7 @@ const BulkDownloader = () => {
   }, [
     table,
     folderPath,
-    tiktokCookie,
     fileNameFormat,
-    isSavingCookie,
     downloading,
     downloadProgress,
     rowSelection,
