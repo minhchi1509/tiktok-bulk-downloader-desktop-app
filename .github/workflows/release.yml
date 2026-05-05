@@ -1,15 +1,74 @@
 name: Build and Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
+  prepare-release:
+    if: >
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.ref == 'dev'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump-version.outputs.version }}
+      tag: ${{ steps.bump-version.outputs.tag }}
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Bump patch version
+        id: bump-version
+        shell: bash
+        run: |
+          current_version="$(bun --print "require('./package.json').version")"
+          next_version="$(bun --print "(() => { const [major, minor, patch] = require('./package.json').version.split('.').map(Number); return [major, minor, patch + 1].join('.'); })()")"
+
+          bun --eval "
+            const fs = require('fs');
+            const pkg = require('./package.json');
+            pkg.version = '${next_version}';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\\n');
+          "
+
+          echo "version=${next_version}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${next_version}" >> "$GITHUB_OUTPUT"
+          echo "Bumped version from ${current_version} to ${next_version}"
+
+      - name: Commit version bump
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json
+          git commit -m "chore(release): v${{ steps.bump-version.outputs.version }}"
+
+      - name: Create tag
+        run: git tag "v${{ steps.bump-version.outputs.version }}"
+
+      - name: Push commit and tag
+        run: |
+          git push origin HEAD:main
+          git push origin "v${{ steps.bump-version.outputs.version }}"
+
   build:
+    needs: prepare-release
     strategy:
       matrix:
         include:
@@ -24,8 +83,10 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Checkout code
+      - name: Checkout tagged release
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.tag }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -61,7 +122,9 @@ jobs:
           if-no-files-found: ignore
 
   release:
-    needs: build
+    needs:
+      - prepare-release
+      - build
     runs-on: ubuntu-latest
 
     steps:
@@ -77,6 +140,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.prepare-release.outputs.tag }}
           files: artifacts/*
           generate_release_notes: true
         env:
