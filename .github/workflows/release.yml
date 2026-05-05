@@ -27,25 +27,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 24
-          cache: 'npm'
+          bun-version: latest
 
       - name: Install dependencies
-        run: npm ci
-        env:
-          npm_config_build_from_source: false
+        run: bun install --frozen-lockfile
 
       - name: Build Electron app
-        run: npm run build
+        run: bun run build
         timeout-minutes: 10
         env:
           NODE_OPTIONS: --max-old-space-size=8192
 
       - name: Package Electron app
-        run: npx electron-builder --${{ matrix.platform }} --publish never
+        run: bunx electron-builder --${{ matrix.platform }} --publish never
         timeout-minutes: 15
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
