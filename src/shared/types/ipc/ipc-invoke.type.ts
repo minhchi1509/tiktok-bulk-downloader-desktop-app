@@ -3,7 +3,7 @@ import type {
   ITiktokGetAwemeListResponse,
   ITiktokUserDetails
 } from '@minhchi1509/social-media-api/types'
-import { TGetAwemeListOptions } from '@shared/types/tiktok.type'
+import type { IGetUserAwemeListOptions } from '@shared/types/tiktok.type'
 export interface IDownloadFileOptions {
   url: string
   fileName: string
@@ -31,7 +31,10 @@ type Rpc<Args extends unknown[] = [], Response = void> = {
 // Single source of truth for all ipcRenderer.invoke/ipcMain.handle methods.
 export interface IpcInvokeContract {
   getUserInfo: Rpc<[username: string], IpcResponse<ITiktokUserDetails>>
-  getUserAwemeList: Rpc<[options: TGetAwemeListOptions], IpcResponse<ITiktokGetAwemeListResponse>>
+  getUserAwemeList: Rpc<
+    [options: IGetUserAwemeListOptions],
+    IpcResponse<ITiktokGetAwemeListResponse>
+  >
   getMultiAwemeDetails: Rpc<
     [awemeIds: string[]],
     IpcResponse<Record<string, ITiktokAwemeDetails | null>>

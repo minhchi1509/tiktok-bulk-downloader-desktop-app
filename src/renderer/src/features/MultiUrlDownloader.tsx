@@ -1,28 +1,29 @@
-import {
-  Button,
-  Input,
-  Select,
-  SelectItem,
-  Card,
-  CardBody,
-  Chip,
-  Tooltip,
-  Textarea,
-  ScrollShadow
-} from '@heroui/react'
-import { useState, useEffect, useRef } from 'react'
-import { FolderOpen, Download, Check, AlertCircle, Loader2 } from 'lucide-react'
+import { Button, Card, TextArea, ScrollShadow, TextField, Label, FieldError } from '@heroui/react'
+import { useState, useRef } from 'react'
+import { Download, Check, AlertCircle, Loader2 } from 'lucide-react'
 import { TIKTOK_POST_DETAIL_URL_PATTERN } from '@shared/constants'
 import tiktokUtils, { TFileNameFormatOption } from '@shared/utils/tiktok.util'
-import { showErrorToast } from '@renderer/lib/toast'
+import { showErrorToast } from '@renderer/lib/utils/toast'
 import { promisePool } from '@shared/utils/common.util'
 import type { ITiktokAwemeDetails } from '@minhchi1509/social-media-api/types'
-import CookieInput from '@renderer/components/CookieInput'
+import { Controller, useForm } from 'react-hook-form'
+import {
+  downloadMultipleUrlsSchema,
+  TDownloadMultipleUrlsInput
+} from '@renderer/lib/schemas/download'
+import { zodResolver } from '@hookform/resolvers/zod'
+import SavedLocationSelect from '@renderer/components/forms/SavedLocationSelect'
+import FilenameFormatSelect from '@renderer/components/forms/FilenameFormatSelect'
+import FormInput from '@renderer/components/forms/FormInput'
+import ApiSecretKeyInput from '@renderer/components/forms/ApiSecretKeyInput'
 
-const FILE_NAME_FORMAT_OPTIONS: Array<{ key: TFileNameFormatOption; label: string }> = [
-  { key: 'id', label: 'ID' },
-  { key: 'title', label: 'Description' },
-  { key: 'timestamp', label: 'Timestamp' }
+const DOWNLOAD_MULTIPLE_FILE_NAME_FORMAT_OPTIONS: Array<{
+  value: TFileNameFormatOption
+  label: string
+}> = [
+  { value: 'id', label: 'ID' },
+  { value: 'title', label: 'Description' },
+  { value: 'timestamp', label: 'Timestamp' }
 ]
 
 interface IDownloadItem {
@@ -34,63 +35,53 @@ interface IDownloadItem {
 }
 
 const MultiUrlDownloader = () => {
-  const [inputUrls, setInputUrls] = useState('')
-  const [folderPath, setFolderPath] = useState('')
-  const [fileNameFormat, setFileNameFormat] = useState<Set<TFileNameFormatOption>>(new Set(['id']))
-  const [concurrentDownloads, setConcurrentDownloads] = useState('5')
   const [isProcessing, setIsProcessing] = useState(false)
   const [downloadQueue, setDownloadQueue] = useState<IDownloadItem[]>([])
 
   // Refs for processing loop
   const isCancelledRef = useRef(false)
 
-  useEffect(() => {
-    const loadInitialSettings = async () => {
-      const { data: defaultPath } = await window.api.getDefaultDownloadPath()
-      if (defaultPath) {
-        setFolderPath(defaultPath)
-      }
-    }
-
-    loadInitialSettings()
-  }, [])
-
-  const handleConcurrencyChange = (value: string) => {
-    setConcurrentDownloads(Number.parseInt(value, 10) ? value : '')
-  }
-
-  const handleSelectFolder = async () => {
-    const { data: path } = await window.api.selectFolder()
-    if (path) setFolderPath(path)
-  }
-
-  const getFilename = (item: ITiktokAwemeDetails, ext: string) => {
+  const getFilename = ({
+    item,
+    ext,
+    filenameFormat
+  }: {
+    item: ITiktokAwemeDetails
+    ext: string
+    filenameFormat: TFileNameFormatOption[]
+  }) => {
     const filename = tiktokUtils.getFilename({
       id: item.id,
       title: item.description,
       timestamp: item.createdAt,
-      format: Array.from(fileNameFormat)
+      format: Array.from(filenameFormat)
     })
 
     return `${filename}.${ext}`
   }
 
-  const downloadItem = async (
-    dataItem: ITiktokAwemeDetails,
-    itemId: string,
-    targetFolder: string
-  ) => {
+  const downloadItem = async ({
+    dataItem,
+    itemId,
+    savedFolderPath,
+    filenameFormat
+  }: {
+    dataItem: ITiktokAwemeDetails
+    itemId: string
+    savedFolderPath: string
+    filenameFormat: TFileNameFormatOption[]
+  }) => {
     try {
       if (dataItem.contentType === 'VIDEO' && dataItem.video) {
         const { success } = await window.api.downloadFile({
           url: dataItem.video.hdPlayUrlList.at(-1) || '',
-          fileName: getFilename(dataItem, 'mp4'),
-          folderPath: targetFolder
+          fileName: getFilename({ item: dataItem, ext: 'mp4', filenameFormat }),
+          folderPath: savedFolderPath
         })
         if (!success) throw new Error('Failed to download video')
       } else if (dataItem.contentType === 'MULTI_PHOTO' && dataItem.imagePost) {
-        const baseName = getFilename(dataItem, 'jpg')
-        const photoFolderPath = `${targetFolder}/${dataItem.id}`
+        const baseName = getFilename({ item: dataItem, ext: 'jpg', filenameFormat })
+        const photoFolderPath = `${savedFolderPath}/${dataItem.id}`
         await Promise.allSettled(
           dataItem.imagePost.images.map(async (u, k) => {
             const { success } = await window.api.downloadFile({
@@ -115,13 +106,19 @@ const MultiUrlDownloader = () => {
     }
   }
 
-  const startProcessing = async (
-    items: IDownloadItem[],
+  const startProcessing = async ({
+    items,
+    detailsById,
+    concurrentDownloads,
+    saveLocation,
+    filenameFormat
+  }: {
+    items: IDownloadItem[]
     detailsById: Record<string, ITiktokAwemeDetails | null>
-  ) => {
+  } & TDownloadMultipleUrlsInput) => {
     const validItems = items.filter((item) => Boolean(detailsById[item.id]))
 
-    const maxConcurrency = Math.max(1, Number.parseInt(concurrentDownloads, 10) || 1)
+    const maxConcurrency = Math.max(1, concurrentDownloads)
 
     await promisePool({
       items: validItems,
@@ -142,24 +139,20 @@ const MultiUrlDownloader = () => {
         setDownloadQueue((prev) =>
           prev.map((q) => (q.id === item.id ? { ...q, status: 'downloading' } : q))
         )
-        await downloadItem(details, item.id, folderPath)
+        await downloadItem({
+          dataItem: details,
+          itemId: item.id,
+          savedFolderPath: saveLocation,
+          filenameFormat: filenameFormat as TFileNameFormatOption[]
+        })
       }
     })
 
     setIsProcessing(false)
   }
 
-  const onDownloadClick = async () => {
-    if (!folderPath) {
-      const { data: path } = await window.api.getDefaultDownloadPath()
-      if (path) setFolderPath(path)
-      else {
-        showErrorToast('Please select a download folder')
-        return
-      }
-    }
-
-    const lines = inputUrls.split(/[\n\s]+/).filter((l) => l.trim().length > 0)
+  const onDownloadClick = async (formValues: TDownloadMultipleUrlsInput) => {
+    const lines = formValues.urls.split(/[\n\s]+/).filter((l) => l.trim().length > 0)
     const newItems: IDownloadItem[] = []
     const seenIds = new Set()
 
@@ -210,156 +203,191 @@ const MultiUrlDownloader = () => {
       })
     )
 
-    startProcessing(newItems, awemeList)
+    startProcessing({
+      items: newItems,
+      detailsById: awemeList,
+      ...formValues
+    })
   }
 
+  const downloadMultipleUrlsForm = useForm<TDownloadMultipleUrlsInput>({
+    resolver: zodResolver(downloadMultipleUrlsSchema),
+    defaultValues: {
+      apiSecretKey: '',
+      urls: '',
+      saveLocation: '',
+      filenameFormat: ['id'] as TFileNameFormatOption[],
+      concurrentDownloads: 5
+    }
+  })
+
   return (
-    <div className="flex flex-col gap-6 max-w-4xl mx-auto mt-6 p-6 bg-content1 rounded-xl shadow-lg border border-divider">
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-linear-to-r from-primary to-secondary">
-            Multi-URLs Downloader
-          </h2>
-          <p className="text-default-500">Enter multiple TikTok URLs to download them at once.</p>
-        </div>
+    <Card className="max-w-4xl mx-auto p-6 rounded-lg border">
+      <Card.Content>
+        <div className="space-y-6">
+          <p className="font-semibold text-zinc-600 dark:text-zinc-400">
+            Enter multiple TikTok URLs to download them at once.
+          </p>
 
-        <Textarea
-          label="Tiktok URLs"
-          placeholder="Paste Tiktok links here (one per line or space separated)...&#10;https://www.tiktok.com/@user/video/75899...&#10;https://www.tiktok.com/@user/photo/75880..."
-          minRows={5}
-          maxRows={10}
-          value={inputUrls}
-          onValueChange={setInputUrls}
-          variant="bordered"
-          isDisabled={isProcessing}
-        />
-
-        <div className="flex flex-col gap-4">
-          <div className="flex gap-4 items-end">
-            <Tooltip delay={0} content={folderPath} placement="top" isDisabled={!folderPath}>
-              <Input
-                label="Save Location"
-                value={folderPath}
-                readOnly
-                placeholder="Default: Downloads"
-                className="flex-1"
-                variant="bordered"
-                endContent={
-                  <FolderOpen
-                    className="text-default-400 cursor-pointer hover:text-primary"
-                    onClick={handleSelectFolder}
-                  />
-                }
+          <Controller
+            control={downloadMultipleUrlsForm.control}
+            name="apiSecretKey"
+            render={({ field: { ref, ...fieldProps }, fieldState: { error, invalid } }) => (
+              <ApiSecretKeyInput
+                isDisabled={isProcessing}
+                isInvalid={invalid}
+                className="grow"
+                errorMessage={error?.message}
+                {...fieldProps}
               />
-            </Tooltip>
-            <CookieInput className="flex-1" variant="bordered" isDisabled={isProcessing} />
-          </div>
-
-          <Input
-            label="Concurrent Downloads"
-            value={concurrentDownloads}
-            onValueChange={handleConcurrencyChange}
-            type="number"
-            min={1}
-            variant="bordered"
-            isDisabled={isProcessing}
+            )}
           />
 
-          <Select
-            classNames={{ label: 'mb-2' }}
-            label="Filename Format"
-            selectionMode="multiple"
-            selectedKeys={fileNameFormat}
-            onSelectionChange={(keys) => setFileNameFormat(keys as Set<TFileNameFormatOption>)}
-            variant="bordered"
-            renderValue={(items) => (
-              <div className="flex flex-wrap items-center gap-1">
-                {items.map((item, index) => (
-                  <div key={item.key} className="flex items-center gap-1">
-                    <Chip size="sm" variant="flat" color="primary">
-                      {item.textValue}
-                    </Chip>
-                    {index < items.length - 1 && <span className="text-default-400">_</span>}
-                  </div>
-                ))}
-              </div>
+          <Controller
+            control={downloadMultipleUrlsForm.control}
+            name="urls"
+            render={({ field: { ref, ...fieldProps }, fieldState: { error, invalid } }) => (
+              <TextField isRequired isDisabled={isProcessing} isInvalid={invalid} {...fieldProps}>
+                <Label>URLs</Label>
+                <TextArea
+                  placeholder="Paste Tiktok links here (one per line or space separated)...&#10;https://www.tiktok.com/@user/video/75899...&#10;https://www.tiktok.com/@user/photo/75880..."
+                  rows={10}
+                  className="resize-none"
+                  variant="secondary"
+                />
+                <FieldError>{error?.message}</FieldError>
+              </TextField>
             )}
-          >
-            {FILE_NAME_FORMAT_OPTIONS.map((option) => (
-              <SelectItem key={option.key}>{option.label}</SelectItem>
-            ))}
-          </Select>
-        </div>
+          />
 
-        <Button
-          color={isProcessing ? 'danger' : 'primary'}
-          onPress={() => {
-            if (isProcessing) {
-              isCancelledRef.current = true
-              setIsProcessing(false) // Optimistic UI update
-            } else {
-              onDownloadClick()
-            }
-          }}
-          className="w-full font-bold text-md"
-          size="lg"
-          startContent={isProcessing ? <AlertCircle /> : <Download />}
-        >
-          {isProcessing ? 'Stop Downloading' : 'Start Download'}
-        </Button>
+          <Controller
+            control={downloadMultipleUrlsForm.control}
+            name="saveLocation"
+            render={({ field: { ref, ...fieldProps }, fieldState: { error, invalid } }) => (
+              <SavedLocationSelect
+                name={fieldProps.name}
+                value={fieldProps.value}
+                isDisabled={isProcessing}
+                onFolderPathChange={(path) => fieldProps.onChange(path)}
+                errorMessage={error?.message}
+                isInvalid={invalid}
+              />
+            )}
+          />
 
-        {/* Status Queue Section */}
-        {downloadQueue.length > 0 && (
-          <div className="flex flex-col gap-3 mt-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-semibold text-default-600">
-                Download Queue ({downloadQueue.length})
-              </h3>
-              <span className="text-tiny text-default-400">
-                Success: {downloadQueue.filter((i) => i.status === 'success').length} | Failed:{' '}
-                {downloadQueue.filter((i) => i.status === 'error').length}
-              </span>
-            </div>
+          <div className="flex gap-2">
+            <Controller
+              control={downloadMultipleUrlsForm.control}
+              name="filenameFormat"
+              render={({ field: { ref, ...fieldProps }, fieldState: { error, invalid } }) => (
+                <FilenameFormatSelect
+                  options={DOWNLOAD_MULTIPLE_FILE_NAME_FORMAT_OPTIONS}
+                  name={fieldProps.name}
+                  value={fieldProps.value}
+                  isDisabled={isProcessing}
+                  onChange={(path) => fieldProps.onChange(path)}
+                  errorMessage={error?.message}
+                  isInvalid={invalid}
+                  className="grow"
+                />
+              )}
+            />
 
-            <ScrollShadow
-              className="h-75 w-full rounded-lg border border-divider p-2 gap-2 flex flex-col"
-              visibility="none"
-            >
-              {downloadQueue.map((item) => (
-                <Card
-                  key={item.id}
-                  className="w-full shadow-sm border border-default-100 flex-none"
-                >
-                  <CardBody className="flex flex-row items-center gap-3 p-3 overflow-hidden">
-                    <div className="min-w-20 font-mono text-small text-default-500">{item.id}</div>
-
-                    <div className="flex-1 min-w-0 flex flex-col">
-                      <div className="text-small truncate">
-                        {item.data?.description || item.originalUrl}
-                      </div>
-                      {item.status === 'error' && (
-                        <div className="text-tiny text-danger truncate">{item.error}</div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {item.status === 'pending' && (
-                        <div className="text-tiny text-default-400">Pending</div>
-                      )}
-                      {item.status === 'downloading' && (
-                        <Loader2 className="animate-spin text-primary" size={18} />
-                      )}
-                      {item.status === 'success' && <Check className="text-success" size={18} />}
-                      {item.status === 'error' && <AlertCircle className="text-danger" size={18} />}
-                    </div>
-                  </CardBody>
-                </Card>
-              ))}
-            </ScrollShadow>
+            <Controller
+              control={downloadMultipleUrlsForm.control}
+              name="concurrentDownloads"
+              render={({ field: { ref, ...fieldProps }, fieldState: { error, invalid } }) => (
+                <FormInput
+                  name={fieldProps.name}
+                  label="Download concurrency"
+                  value={String(fieldProps.value)}
+                  onChange={(val) => fieldProps.onChange(parseInt(val, 10))}
+                  isDisabled={isProcessing}
+                  isRequired
+                  errorMessage={error?.message}
+                  isInvalid={invalid}
+                  className="grow max-w-fit"
+                  inputProps={{
+                    type: 'number',
+                    variant: 'secondary',
+                    placeholder: 'Enter concurrent downloads'
+                  }}
+                />
+              )}
+            />
           </div>
-        )}
-      </div>
-    </div>
+
+          <Button
+            variant={isProcessing ? 'danger' : 'primary'}
+            onPress={() => {
+              if (isProcessing) {
+                isCancelledRef.current = true
+                setIsProcessing(false) // Optimistic UI update
+              } else {
+                downloadMultipleUrlsForm.handleSubmit(onDownloadClick)()
+              }
+            }}
+            className="w-full font-bold text-md"
+            size="lg"
+          >
+            {isProcessing ? <AlertCircle /> : <Download />}
+            {isProcessing ? 'Stop Downloading' : 'Start Download'}
+          </Button>
+
+          {/* Status Queue Section */}
+          {downloadQueue.length > 0 && (
+            <div className="flex flex-col gap-3 mt-4">
+              <div className="flex justify-between items-center">
+                <h3 className="font-semibold text-zinc-600 dark:text-zinc-400">
+                  Download Queue ({downloadQueue.length})
+                </h3>
+                <span className="text-xs text-zinc-600 dark:text-zinc-400">
+                  Success: {downloadQueue.filter((i) => i.status === 'success').length} | Failed:{' '}
+                  {downloadQueue.filter((i) => i.status === 'error').length}
+                </span>
+              </div>
+
+              <ScrollShadow
+                className="h-75 w-full rounded-lg border p-2 gap-2 flex flex-col"
+                visibility="none"
+              >
+                {downloadQueue.map((item) => (
+                  <Card key={item.id} className="w-full border flex-none rounded-xl">
+                    <Card.Content className="flex flex-row items-center gap-3 overflow-hidden">
+                      <div className="min-w-20 text-xs text-zinc-600 dark:text-zinc-400">
+                        {item.id}
+                      </div>
+
+                      <div className="flex-1 min-w-0 flex flex-col">
+                        <div className="text-xs truncate">
+                          {item.data?.description || item.originalUrl}
+                        </div>
+                        {item.status === 'error' && (
+                          <div className="text-xs text-danger truncate">{item.error}</div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {item.status === 'pending' && (
+                          <div className="text-xs text-zinc-600 dark:text-zinc-400">Pending</div>
+                        )}
+                        {item.status === 'downloading' && (
+                          <Loader2 className="animate-spin text-primary" size={18} />
+                        )}
+                        {item.status === 'success' && <Check className="text-success" size={18} />}
+                        {item.status === 'error' && (
+                          <AlertCircle className="text-danger" size={18} />
+                        )}
+                      </div>
+                    </Card.Content>
+                  </Card>
+                ))}
+              </ScrollShadow>
+            </div>
+          )}
+        </div>
+      </Card.Content>
+    </Card>
   )
 }
 

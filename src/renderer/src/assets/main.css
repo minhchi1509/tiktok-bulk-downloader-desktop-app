@@ -1,7 +1,52 @@
 @import 'tailwindcss';
-@plugin '@renderer/configs/hero.config.ts';
-@source '../../../../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}';
+@import '@heroui/styles';
+
 @custom-variant dark (&:is(.dark *));
+
+:root {
+  --scrollbar-track-bg: 240 4.8% 95.9%;
+  --scrollbar-thumb-bg: 240 3.8% 46.1%;
+  --scrollbar-thumb-active-bg: 240 5.9% 10%;
+}
+
+.dark {
+  --scrollbar-track-bg: 240 3.7% 15.9%;
+  --scrollbar-thumb-bg: 240 5% 64.9%;
+  --scrollbar-thumb-active-bg: 0 0% 98%;
+}
+
+@layer base {
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: hsl(var(--scrollbar-track-bg) / 0.3);
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: hsl(var(--scrollbar-thumb-bg) / 0.4);
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--scrollbar-thumb-bg) / 0.6);
+  }
+
+  *::-webkit-scrollbar-thumb:active {
+    background: hsl(var(--scrollbar-thumb-active-bg));
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-button {
+    display: none;
+  }
+}
 
 .app-drag {
   -webkit-app-region: drag;

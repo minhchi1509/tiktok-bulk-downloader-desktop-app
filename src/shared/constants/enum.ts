@@ -1,3 +1,3 @@
 export enum EAppSettingKey {
-  TIKTOK_COOKIE = 'tiktok_cookie'
+  API_SECRET_KEY = 'api_secret_key'
 }

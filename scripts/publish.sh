@@ -26,20 +26,10 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 fi
 
 if [ -n "$(git status --porcelain)" ]; then
-	echo "Warning: working tree is not clean."
-	echo "Changed files:"
-	git status --short
-	echo
-	read -r -p "Continue publish and commit only package version files? [y/N]: " continue_publish
-	case "${continue_publish:-N}" in
-		y|Y|yes|YES)
-			echo "Continuing with dirty working tree (only version files will be committed)."
-			;;
-		*)
-			echo "Publish cancelled. Please commit/stash your changes first." >&2
-			exit 1
-			;;
-	esac
+	echo "Working tree is not clean. Starting commit process..."
+  git add .
+  git commit -m "chore: commit changes before version bump"
+  git push -u origin main
 fi
 
 current_version="$(node -p "require('./package.json').version")"

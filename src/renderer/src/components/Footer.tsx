@@ -4,15 +4,16 @@ import { FacebookLogoIcon, GithubLogoIcon } from '@renderer/assets/icons'
 const Footer = () => {
   return (
     <footer className="w-full py-4 px-6 flex flex-col md:flex-row items-center justify-between border-t border-divider bg-background/60 backdrop-blur-md">
-      <div className="text-small text-default-500">
+      <div>
         Created by <span className="font-semibold text-primary">@minhchi1509</span>
       </div>
       <div className="flex items-center gap-4 mt-2 md:mt-0">
-        <Link isExternal href="https://www.facebook.com/minhchi1509">
+        <Link target="_blank" rel="noopener noreferrer" href="https://www.facebook.com/minhchi1509">
           <FacebookLogoIcon width={20} height={20} />
         </Link>
         <Link
-          isExternal
+          target="_blank"
+          rel="noopener noreferrer"
           href="https://github.com/minhchi1509/tiktok-bulk-downloader-desktop-app"
           className="text-black dark:text-white hover:text-black/80 dark:hover:text-white/80"
         >

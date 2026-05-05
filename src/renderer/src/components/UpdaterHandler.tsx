@@ -1,15 +1,7 @@
 import { useState, useEffect } from 'react'
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
-  Progress,
-  useDisclosure
-} from '@heroui/react'
+import { Modal, Button, useOverlayState } from '@heroui/react'
 import { UpdateAvailableInfo } from '@shared/types/ipc/ipc-event.type'
+import ProgressBar from '@renderer/components/ProgressBar'
 
 type UpdateStatus =
   | 'idle'
@@ -21,7 +13,8 @@ type UpdateStatus =
   | 'not-available'
 
 const UpdaterHandler = () => {
-  const { isOpen, onOpen, onOpenChange } = useDisclosure()
+  const modalState = useOverlayState()
+  const { open: openModal, close: closeModal } = modalState
   const [status, setStatus] = useState<UpdateStatus>('idle')
   const [progress, setProgress] = useState(0)
   const [updateInfo, setUpdateInfo] = useState<UpdateAvailableInfo | null>(null)
@@ -31,12 +24,12 @@ const UpdaterHandler = () => {
     const removeUpdateAvailable = window.api.onUpdateAvailable((info) => {
       setUpdateInfo(info)
       setStatus('available')
-      onOpen()
+      openModal()
     })
 
     const removeUpdateDownloaded = window.api.onUpdateDownloaded(() => {
       setStatus('ready')
-      onOpen() // Re-open or ensure open
+      openModal() // Re-open or ensure open
     })
 
     const removeDownloadProgress = window.api.onDownloadProgress((prog) => {
@@ -57,7 +50,7 @@ const UpdaterHandler = () => {
 
     const removeNotAvailable = window.api.onUpdateNotAvailable(() => {
       setStatus('not-available')
-      onOpen()
+      openModal()
     })
 
     return () => {
@@ -79,93 +72,70 @@ const UpdaterHandler = () => {
     window.api.quitAndInstall()
   }
 
-  const renderContent = (onClose: () => void) => {
-    if (status === 'available') {
-      return (
+  const renderModalByStatus = {
+    available: {
+      title: () => 'Update Available',
+      body: () => (
         <>
-          <ModalHeader className="flex flex-col gap-1">Update Available</ModalHeader>
-          <ModalBody>
-            <p>A new version {updateInfo?.version} is available.</p>
-            <p>Do you want to download it now?</p>
-          </ModalBody>
-          <ModalFooter>
-            <Button color="danger" variant="light" onPress={onClose}>
-              Cancel
-            </Button>
-            <Button color="primary" onPress={handleDownload}>
-              Download
-            </Button>
-          </ModalFooter>
+          <p>A new version {updateInfo?.version} is available.</p>
+          <p>Do you want to download it now?</p>
+        </>
+      ),
+      footer: () => (
+        <>
+          <Button variant="danger" onPress={closeModal}>
+            Cancel
+          </Button>
+          <Button variant="primary" onPress={handleDownload}>
+            Download
+          </Button>
         </>
       )
-    }
-
-    if (status === 'downloading') {
-      return (
+    },
+    downloading: {
+      title: () => 'Downloading Update',
+      body: () => <ProgressBar label="Downloading..." value={progress} />,
+      footer: () => null // No buttons during download
+    },
+    ready: {
+      title: () => 'Update Ready',
+      body: () => <p>The update has been downloaded. Restart the app to install?</p>,
+      footer: () => (
         <>
-          <ModalHeader className="flex flex-col gap-1">Downloading Update...</ModalHeader>
-          <ModalBody>
-            <Progress
-              value={progress}
-              showValueLabel={true}
-              label="Downloading..."
-              aria-label="Update download progress"
-            />
-          </ModalBody>
-          <ModalFooter>
-            {/* Can't really cancel easily with electron-updater without cancellation token logic, so just hide button or disable */}
-          </ModalFooter>
+          <Button variant="danger" onPress={closeModal}>
+            Later
+          </Button>
+          <Button variant="primary" onPress={handleInstall}>
+            Restart & Install
+          </Button>
         </>
       )
-    }
-
-    if (status === 'ready') {
-      return (
-        <>
-          <ModalHeader className="flex flex-col gap-1">Update Ready</ModalHeader>
-          <ModalBody>
-            <p>The update has been downloaded. Restart the app to install?</p>
-          </ModalBody>
-          <ModalFooter>
-            <Button color="danger" variant="light" onPress={onClose}>
-              Later
-            </Button>
-            <Button color="primary" onPress={handleInstall}>
-              Restart & Install
-            </Button>
-          </ModalFooter>
-        </>
+    },
+    'not-available': {
+      title: () => 'No Updates Available',
+      body: () => <p>You are using the latest version.</p>,
+      footer: () => (
+        <Button variant="primary" onPress={closeModal}>
+          OK
+        </Button>
       )
     }
-
-    if (status === 'not-available') {
-      return (
-        <>
-          <ModalHeader className="flex flex-col gap-1">No Updates Available</ModalHeader>
-          <ModalBody>
-            <p>You are using the latest version.</p>
-          </ModalBody>
-          <ModalFooter>
-            <Button color="primary" onPress={onClose}>
-              OK
-            </Button>
-          </ModalFooter>
-        </>
-      )
-    }
-
-    return <></>
   }
 
   return (
-    <Modal
-      aria-label="Application update dialog"
-      isOpen={isOpen}
-      onOpenChange={onOpenChange}
-      isDismissable={false}
-      hideCloseButton={status === 'downloading'}
-    >
-      <ModalContent>{(onClose) => renderContent(onClose)}</ModalContent>
+    <Modal state={modalState}>
+      <Modal.Backdrop isDismissable={status !== 'downloading'} variant="blur">
+        <Modal.Container>
+          <Modal.Dialog>
+            {status !== 'downloading' && <Modal.CloseTrigger />}
+            <Modal.Header>
+              <Modal.Heading>{renderModalByStatus[status]?.title()}</Modal.Heading>
+            </Modal.Header>
+            <Modal.Body>{renderModalByStatus[status]?.body()}</Modal.Body>
+            <Modal.Footer>{renderModalByStatus[status]?.footer()}</Modal.Footer>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
     </Modal>
   )
 }

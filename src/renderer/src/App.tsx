@@ -1,4 +1,3 @@
-import { HeroUIProvider } from '@heroui/react'
 import { ThemeProvider as NextThemesProvider } from 'next-themes'
 import Layout from './components/Layout'
 import { Toaster } from 'sonner'
@@ -8,18 +7,16 @@ import DonatePage from './pages/DonatePage'
 
 export default function App() {
   return (
-    <HeroUIProvider>
-      <NextThemesProvider attribute="class" defaultTheme="dark">
-        <HashRouter>
-          <Layout>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/donate" element={<DonatePage />} />
-            </Routes>
-          </Layout>
-          <Toaster />
-        </HashRouter>
-      </NextThemesProvider>
-    </HeroUIProvider>
+    <NextThemesProvider attribute="class" defaultTheme="dark">
+      <HashRouter>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/donate" element={<DonatePage />} />
+          </Routes>
+        </Layout>
+        <Toaster />
+      </HashRouter>
+    </NextThemesProvider>
   )
 }

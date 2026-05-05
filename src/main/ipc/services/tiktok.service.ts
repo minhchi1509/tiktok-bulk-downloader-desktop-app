@@ -6,7 +6,7 @@ import type {
   ITiktokGetAwemeListResponse,
   ITiktokUserDetails
 } from '@minhchi1509/social-media-api/types'
-import { TGetAwemeListOptions } from '@shared/types/tiktok.type'
+import { IGetUserAwemeListOptions } from '@shared/types/tiktok.type'
 import { ISettingsService } from '@main/ipc/services/settings.service'
 import { EAppSettingKey } from '@shared/constants/enum'
 
@@ -28,9 +28,9 @@ export class TiktokService implements ITiktokService {
   constructor(private readonly settingsService: ISettingsService) {
     this.tiktokApiService = new TiktokMobileApiService({
       getCredentialsBeforeRequest: async () => {
-        const savedCookie = await this.settingsService.get<string>(EAppSettingKey.TIKTOK_COOKIE)
+        const sidTt = await this.settingsService.get<string>(EAppSettingKey.API_SECRET_KEY)
         return {
-          mobileAppCookie: savedCookie || '',
+          mobileAppCookie: `sid_tt=${sidTt}`,
           deviceId: '7631568362263561749',
           installId: '7631570938534954772'
         }
@@ -38,7 +38,7 @@ export class TiktokService implements ITiktokService {
     })
   }
 
-  public async getUserAwemeList(options: TGetAwemeListOptions) {
+  public async getUserAwemeList(options: IGetUserAwemeListOptions) {
     const { secUid, maxCursor, minCursor } = options
     const responseData = await this.tiktokApiService.getUserAwemeList({
       secUid,
