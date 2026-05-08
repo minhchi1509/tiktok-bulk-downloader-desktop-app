@@ -33,7 +33,7 @@ export const ColumnFilter: FC<IColumnFilterProps> = ({
           </button>
         </Popover.Trigger>
         <Popover.Content className="max-w-48">
-          <div className="flex flex-col gap-2 p-2 rounded-xl bg-white dark:bg-black">
+          <div className="flex flex-col gap-2 p-2 rounded-2xl bg-white dark:bg-black">
             {options.map((option) => (
               <label
                 htmlFor={`form-${option.value}`}

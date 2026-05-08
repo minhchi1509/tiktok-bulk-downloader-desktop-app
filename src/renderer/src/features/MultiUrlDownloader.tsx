@@ -222,7 +222,7 @@ const MultiUrlDownloader = () => {
   })
 
   return (
-    <Card className="max-w-4xl mx-auto p-6 rounded-lg border">
+    <Card className="max-w-4xl mx-auto p-6 border">
       <Card.Content>
         <div className="space-y-6">
           <p className="font-semibold text-zinc-600 dark:text-zinc-400">

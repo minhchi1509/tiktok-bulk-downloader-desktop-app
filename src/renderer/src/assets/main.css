@@ -7,6 +7,14 @@
   --scrollbar-track-bg: 240 4.8% 95.9%;
   --scrollbar-thumb-bg: 240 3.8% 46.1%;
   --scrollbar-thumb-active-bg: 240 5.9% 10%;
+
+  /* Border Radius */
+  --radius: 0.25rem;
+  --field-radius: 0.75rem;
+
+  /* Font Family */
+  /* Make sure to load Inter font in your app */
+  --font-sans: var(--font-inter);
 }
 
 .dark {

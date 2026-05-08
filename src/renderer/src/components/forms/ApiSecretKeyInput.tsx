@@ -1,4 +1,5 @@
-import { FieldError, Input, Label, TextField, TextFieldProps } from '@heroui/react'
+import { FieldError, Input, Label, Link, TextField, TextFieldProps } from '@heroui/react'
+import { EAppRoutes } from '@renderer/constants/route.constant'
 import { EAppSettingKey } from '@shared/constants/enum'
 import { FC, useEffect, useState } from 'react'
 import { useDebounceValue } from 'usehooks-ts'
@@ -45,7 +46,12 @@ const ApiSecretKeyInput: FC<IApiSecretKeyInputProps> = ({ errorMessage, onChange
 
   return (
     <TextField onChange={handleApiSecretKeyChange} isRequired {...props}>
-      <Label>API Secret Key</Label>
+      <Label>
+        API Secret Key{' '}
+        <Link href={`#${EAppRoutes.PRICING}`} className="underline">
+          (How to get)
+        </Link>
+      </Label>
       <Input variant="secondary" />
       <FieldError>{errorMessage}</FieldError>
     </TextField>
