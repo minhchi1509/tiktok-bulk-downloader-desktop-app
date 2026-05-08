@@ -3,7 +3,8 @@ import Layout from './components/Layout'
 import { Toaster } from 'sonner'
 import { HashRouter, Route, Routes } from 'react-router-dom'
 import HomePage from './pages/HomePage'
-import DonatePage from './pages/DonatePage'
+import { EAppRoutes } from '@renderer/constants/route.constant'
+import PricingPage from './pages/PricingPage'
 
 export default function App() {
   return (
@@ -11,8 +12,8 @@ export default function App() {
       <HashRouter>
         <Layout>
           <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/donate" element={<DonatePage />} />
+            <Route path={EAppRoutes.HOME} element={<HomePage />} />
+            <Route path={EAppRoutes.PRICING} element={<PricingPage />} />
           </Routes>
         </Layout>
         <Toaster />

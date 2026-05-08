@@ -1,15 +1,28 @@
-import { FC } from 'react'
-import { ProgressBar as HeroProgressBar, Label, ProgressBarProps } from '@heroui/react'
+import { FC, ReactNode } from 'react'
+import {
+  ProgressBar as HeroProgressBar,
+  Label,
+  LabelProps,
+  ProgressBarOutputProps,
+  ProgressBarProps
+} from '@heroui/react'
 
 interface IProgressBarProps extends ProgressBarProps {
-  label?: string
+  label?: ReactNode | (() => ReactNode)
+  labelProps?: LabelProps
+  outputProps?: ProgressBarOutputProps
 }
 
-const ProgressBar: FC<IProgressBarProps> = ({ label, ...progressBarProps }) => {
+const ProgressBar: FC<IProgressBarProps> = ({
+  label,
+  labelProps,
+  outputProps,
+  ...progressBarProps
+}) => {
   return (
     <HeroProgressBar {...progressBarProps}>
-      {!!label && <Label>{label}</Label>}
-      <HeroProgressBar.Output />
+      {!!label && <Label {...labelProps}>{typeof label === 'function' ? label() : label}</Label>}
+      <HeroProgressBar.Output {...outputProps} />
       <HeroProgressBar.Track>
         <HeroProgressBar.Fill />
       </HeroProgressBar.Track>

@@ -2,9 +2,10 @@ import { ReactNode } from 'react'
 import Footer from './Footer'
 import UpdaterHandler from './UpdaterHandler'
 import { Button, Tooltip } from '@heroui/react'
-import { Moon, Sun, RotateCw, Heart } from 'lucide-react'
+import { Moon, Sun, RotateCw, CircleDollarSign } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useNavigate } from 'react-router-dom'
+import { EAppRoutes } from '@renderer/constants/route.constant'
 
 interface LayoutProps {
   children: ReactNode
@@ -32,16 +33,15 @@ const Layout = ({ children }: LayoutProps) => {
           <Tooltip delay={0}>
             <Tooltip.Trigger>
               <Button
-                onClick={() => navigate('/donate')}
+                onClick={() => navigate(EAppRoutes.PRICING)}
                 isIconOnly
                 variant="tertiary"
-                aria-label="Support Me"
-                className="text-danger"
+                aria-label="Pricing"
               >
-                <Heart size={20} />
+                <CircleDollarSign size={20} />
               </Button>
             </Tooltip.Trigger>
-            <Tooltip.Content>Support Me</Tooltip.Content>
+            <Tooltip.Content>Pricing</Tooltip.Content>
           </Tooltip>
           <Tooltip delay={0}>
             <Tooltip.Trigger>

@@ -1,4 +1,4 @@
-import { Button, Chip, Tooltip, ScrollShadow, Separator, Card } from '@heroui/react'
+import { Button, Chip, Tooltip, ScrollShadow, Separator, Card, cn } from '@heroui/react'
 import {
   SortingState,
   createColumnHelper,
@@ -50,10 +50,15 @@ const BulkDownloader = () => {
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
   const [columnFilters, setColumnFilters] = useState<{ id: string; value: unknown }[]>([])
 
-  // Using Set to handle multiple selections for filename format
-  const [downloading, setDownloading] = useState(false)
+  // Using Set to handle multiple selections for filename forma
+  const [downloadStatus, setDownloadStatus] = useState<
+    'idle' | 'downloading' | 'completed' | 'cancelled'
+  >('idle')
   const [failedItems, setFailedItems] = useState<ITiktokAwemeDetails[]>([])
   const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0 })
+
+  const isDownloading = downloadStatus === 'downloading'
+  const showDownloadProgress = isDownloading || downloadStatus === 'completed'
 
   // Custom Filter Function
   const customFilterFn: FilterFn<ITiktokAwemeDetails> = (row, columnId, filterValue) => {
@@ -100,10 +105,10 @@ const BulkDownloader = () => {
         cell: (info) => (
           <Chip
             size="sm"
-            color={info.getValue() === 'VIDEO' ? 'accent' : 'default'}
+            color={info.getValue() === 'VIDEO' ? 'accent' : 'success'}
             variant="primary"
           >
-            {info.getValue()}
+            <Chip.Label className="text-white">{info.getValue()}</Chip.Label>
           </Chip>
         )
       }),
@@ -221,6 +226,7 @@ const BulkDownloader = () => {
     setIsGettingData(true)
     isCancelGetDataRef.current = false
 
+    setDownloadStatus('idle')
     setPosts([])
     setFailedItems([])
     setPagination({ pageIndex: 0, pageSize: 10 })
@@ -295,7 +301,7 @@ const BulkDownloader = () => {
       return
     }
 
-    setDownloading(true)
+    setDownloadStatus('downloading')
     setFailedItems([])
     isCancelDownloadRef.current = false
     setDownloadProgress({ current: 0, total: selectedRows.length })
@@ -363,12 +369,12 @@ const BulkDownloader = () => {
       }
     })
 
-    setDownloading(false)
+    setDownloadStatus('completed')
   }
 
   const handleStopDownload = () => {
     isCancelDownloadRef.current = true
-    setDownloading(false)
+    setDownloadStatus('cancelled')
   }
 
   const renderTopContent = useCallback(() => {
@@ -391,7 +397,7 @@ const BulkDownloader = () => {
 
         <Separator />
 
-        <DownloadOptions isDownloading={downloading} form={downloadOptionsForm} />
+        <DownloadOptions isDownloading={isDownloading} form={downloadOptionsForm} />
 
         <Separator className="my-2" />
 
@@ -400,24 +406,34 @@ const BulkDownloader = () => {
           <div className="flex gap-2 items-center">
             <Button
               size="sm"
-              variant={downloading ? 'danger' : 'primary'}
+              variant={isDownloading ? 'danger' : 'primary'}
               onPress={
-                downloading
+                isDownloading
                   ? handleStopDownload
                   : () => downloadOptionsForm.handleSubmit(handleDownload)()
               }
               isDisabled={Object.keys(rowSelection).length === 0}
             >
-              {downloading ? <StopCircle size={16} /> : <Download size={16} />}
-              {downloading ? `Stop` : `Download (${Object.keys(rowSelection).length})`}
+              {isDownloading ? <StopCircle size={16} /> : <Download size={16} />}
+              {isDownloading ? `Stop` : `Download (${Object.keys(rowSelection).length})`}
             </Button>
           </div>
         </div>
-        {downloading && (
+        {showDownloadProgress && (
           <div className="w-full px-1">
             <ProgressBar
+              color={isDownloading ? 'accent' : 'success'}
               value={(downloadProgress.current / downloadProgress.total) * 100}
-              label={`Downloading... (${downloadProgress.current} / ${downloadProgress.total})`}
+              outputProps={{
+                className: cn(isDownloading ? '' : 'text-success')
+              }}
+              label={() =>
+                isDownloading ? (
+                  `Downloading... (${downloadProgress.current} / ${downloadProgress.total})`
+                ) : (
+                  <span className="text-success">Download completed</span>
+                )
+              }
             />
           </div>
         )}
@@ -447,12 +463,12 @@ const BulkDownloader = () => {
         )}
       </div>
     )
-  }, [downloading, downloadProgress, rowSelection, userInfo, posts.length, failedItems])
+  }, [isDownloading, downloadProgress, rowSelection, userInfo, posts.length, failedItems])
 
   return (
     <div className="flex flex-col gap-4 h-full relative p-2">
       {/* Input Section */}
-      <Card className="border rounded-lg">
+      <Card className="border">
         <Card.Content>
           <GetDataForm
             form={getAwemeListForm}
@@ -463,7 +479,7 @@ const BulkDownloader = () => {
       </Card>
 
       {/* Main Content: HeroUI Table */}
-      <Card className="border rounded-lg">
+      <Card className="border">
         <Card.Content>
           {renderTopContent()}
           <DataTable
