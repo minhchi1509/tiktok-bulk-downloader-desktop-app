@@ -1,6 +1,7 @@
 import type { IpcInvokeHandlers } from '@shared/types/ipc/ipc-invoke.type'
 
 import {
+  AppInfoIpcHandler,
   DownloadIpcHandler,
   SettingsIpcHandler,
   TiktokIpcHandler,
@@ -22,12 +23,19 @@ class IpcHandlerOrchestrator {
     const downloadService = new ElectronDownloadService()
     const updaterService = new ElectronUpdaterService()
 
+    const appInfoHandler = new AppInfoIpcHandler()
     const tiktokHandler = new TiktokIpcHandler(tiktokService)
     const downloadHandler = new DownloadIpcHandler(downloadService)
     const settingsHandler = new SettingsIpcHandler(settingsService)
     const updaterHandler = new UpdaterIpcHandler(this.options.mainWindow, updaterService)
 
-    this.domainHandlers = [tiktokHandler, downloadHandler, settingsHandler, updaterHandler]
+    this.domainHandlers = [
+      appInfoHandler,
+      tiktokHandler,
+      downloadHandler,
+      settingsHandler,
+      updaterHandler
+    ]
   }
 
   public registerAll(): void {

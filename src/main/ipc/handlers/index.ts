@@ -1,3 +1,4 @@
+export { AppInfoIpcHandler } from './app-info-ipc.handler'
 export { DownloadIpcHandler } from './download-ipc.handler'
 export { SettingsIpcHandler } from './settings-ipc.handler'
 export { TiktokIpcHandler } from './tiktok-ipc.handler'
