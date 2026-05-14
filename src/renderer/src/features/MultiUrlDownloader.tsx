@@ -74,7 +74,7 @@ const MultiUrlDownloader = () => {
     try {
       if (dataItem.contentType === 'VIDEO' && dataItem.video) {
         const { success } = await window.api.downloadFile({
-          url: dataItem.video.hdPlayUrlList.at(-1) || '',
+          url: dataItem.video.hdPlayUrlList[0],
           fileName: getFilename({ item: dataItem, ext: 'mp4', filenameFormat }),
           folderPath: savedFolderPath
         })
@@ -85,7 +85,7 @@ const MultiUrlDownloader = () => {
         await Promise.allSettled(
           dataItem.imagePost.images.map(async (u, k) => {
             const { success } = await window.api.downloadFile({
-              url: u.urlList.at(-1) || '',
+              url: u.urlList[0] || '',
               fileName: `${k + 1}_${baseName}`,
               folderPath: photoFolderPath
             })
