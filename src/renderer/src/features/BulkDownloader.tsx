@@ -58,7 +58,8 @@ const BulkDownloader = () => {
   const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0 })
 
   const isDownloading = downloadStatus === 'downloading'
-  const showDownloadProgress = isDownloading || downloadStatus === 'completed'
+  const showDownloadProgress =
+    isDownloading || (!isCancelDownloadRef.current && downloadStatus === 'completed')
 
   // Custom Filter Function
   const customFilterFn: FilterFn<ITiktokAwemeDetails> = (row, columnId, filterValue) => {
