@@ -1,4 +1,4 @@
-import { ReactNode } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 import Footer from './Footer'
 import UpdaterHandler from './UpdaterHandler'
 import { Button, Tooltip } from '@heroui/react'
@@ -14,19 +14,31 @@ interface LayoutProps {
 const Layout = ({ children }: LayoutProps) => {
   const { theme, setTheme } = useTheme()
   const navigate = useNavigate()
+  const [appVersion, setAppVersion] = useState('')
 
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark')
   }
 
+  useEffect(() => {
+    window.api.getAppVersion().then((response) => {
+      if (response.success) {
+        setAppVersion(response.data)
+      }
+    })
+  }, [])
+
   return (
     <div className="h-screen overflow-hidden flex flex-col">
       <header className="sticky top-0 z-50 w-full border-b border-divider backdrop-blur-md px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-baseline gap-2">
           <div className="app-drag w-full h-full absolute top-0 left-0 z-0 pointer-events-none" />
           <h1 className="text-xl font-bold bg-clip-text text-transparent bg-linear-to-r from-blue-500 to-cyan-500 z-10">
             Tiktok Bulk Downloader
           </h1>
+          {appVersion ? (
+            <span className="z-10 text-sm font-medium text-default-400">v{appVersion}</span>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-2 z-10 app-no-drag">

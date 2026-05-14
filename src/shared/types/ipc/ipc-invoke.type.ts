@@ -30,6 +30,7 @@ type Rpc<Args extends unknown[] = [], Response = void> = {
 
 // Single source of truth for all ipcRenderer.invoke/ipcMain.handle methods.
 export interface IpcInvokeContract {
+  getAppVersion: Rpc<[], IpcResponse<string>>
   getUserInfo: Rpc<[username: string], IpcResponse<ITiktokUserDetails>>
   getUserAwemeList: Rpc<
     [options: IGetUserAwemeListOptions],
@@ -50,6 +51,7 @@ export interface IpcInvokeContract {
 }
 
 export const IPC_INVOKE_CHANNELS: { [K in IpcInvokeMethod]: string } = {
+  getAppVersion: 'GET_APP_VERSION',
   getUserInfo: 'GET_USER_INFO',
   getUserAwemeList: 'GET_USER_AWEME_LIST',
   getMultiAwemeDetails: 'GET_MULTI_AWEME_DETAILS',
