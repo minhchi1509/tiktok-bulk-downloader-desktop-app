@@ -332,7 +332,7 @@ const BulkDownloader = () => {
               format: Array.from(filenameFormat as TFileNameFormatOption[])
             })
             const { success } = await window.api.downloadFile({
-              url: item.video.hdPlayUrlList.at(-1) || '',
+              url: item.video.hdPlayUrlList[0] || '',
               fileName: `${filename}.mp4`,
               folderPath: userFolderPath
             })
@@ -351,7 +351,7 @@ const BulkDownloader = () => {
                   format: Array.from(filenameFormat as TFileNameFormatOption[])
                 })
                 const { success } = await window.api.downloadFile({
-                  url: img.urlList.at(-1) || '',
+                  url: img.urlList[0] || '',
                   fileName: `${filename}.jpg`,
                   folderPath: userFolderPath
                 })
