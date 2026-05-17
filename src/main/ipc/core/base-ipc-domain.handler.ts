@@ -1,6 +1,5 @@
+import { IIpcDomainHandler } from '@main/ipc/ipc-handler.types'
 import type { IpcResponse, IpcInvokeHandlers } from '@shared/types/ipc/ipc-invoke.type'
-
-import type { IIpcDomainHandler } from '../ipc-handler.types'
 
 export abstract class BaseIpcDomainHandler implements IIpcDomainHandler {
   public abstract getInvokeHandlers(): Partial<IpcInvokeHandlers>

@@ -1,8 +1,7 @@
+import { BaseIpcDomainHandler } from '@main/ipc/core/base-ipc-domain.handler'
+import { IIpcDomainHandler } from '@main/ipc/ipc-handler.types'
+import { ITiktokService } from '@main/ipc/services/tiktok.service'
 import type { IpcInvokeHandlers } from '@shared/types/ipc/ipc-invoke.type'
-
-import { BaseIpcDomainHandler } from '../core/base-ipc-domain.handler'
-import type { IIpcDomainHandler } from '../ipc-handler.types'
-import type { ITiktokService } from '../services/tiktok.service'
 
 type TiktokInvokeHandlers = Pick<
   IpcInvokeHandlers,
