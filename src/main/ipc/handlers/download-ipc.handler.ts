@@ -1,8 +1,7 @@
+import { BaseIpcDomainHandler } from '@main/ipc/core/base-ipc-domain.handler'
+import { IIpcDomainHandler } from '@main/ipc/ipc-handler.types'
+import { IDownloadService } from '@main/ipc/services/download.service'
 import type { IpcInvokeHandlers } from '@shared/types/ipc/ipc-invoke.type'
-
-import { BaseIpcDomainHandler } from '../core/base-ipc-domain.handler'
-import type { IIpcDomainHandler } from '../ipc-handler.types'
-import type { IDownloadService } from '../services/download.service'
 
 type DownloadInvokeHandlers = Pick<
   IpcInvokeHandlers,

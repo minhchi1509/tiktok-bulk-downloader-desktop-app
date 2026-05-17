@@ -11,7 +11,7 @@ import { FC, memo, useMemo } from 'react'
 import { ChevronUp } from 'lucide-react'
 import TablePagination from '@renderer/components/Pagination'
 import FormSelect, { TSelectOption } from '@renderer/components/forms/FormSelect'
-import { ITiktokAwemeDetails } from '@shared/types/tiktok.type'
+import { ITiktokAwemeDetails } from '@minhchi1509/social-media-api/types'
 
 interface IDataTableProps {
   table: TableType<ITiktokAwemeDetails>

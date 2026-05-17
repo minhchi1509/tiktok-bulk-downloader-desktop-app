@@ -32,7 +32,7 @@ export class ElectronUpdaterService implements IUpdaterService {
   }
 
   public async checkForUpdates(): Promise<void> {
-    await this.updater.checkForUpdatesAndNotify()
+    await this.updater.checkForUpdates()
   }
 
   public async downloadUpdate(): Promise<void> {

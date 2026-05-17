@@ -15,9 +15,14 @@ const Layout = ({ children }: LayoutProps) => {
   const { theme, setTheme } = useTheme()
   const navigate = useNavigate()
   const [appVersion, setAppVersion] = useState('')
+  const [updateCheckRequestId, setUpdateCheckRequestId] = useState(0)
 
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark')
+  }
+
+  const handleCheckForUpdates = () => {
+    setUpdateCheckRequestId((requestId) => requestId + 1)
   }
 
   useEffect(() => {
@@ -60,7 +65,7 @@ const Layout = ({ children }: LayoutProps) => {
               <Button
                 isIconOnly
                 variant="tertiary"
-                onPress={() => window.api.checkForUpdates()}
+                onPress={handleCheckForUpdates}
                 aria-label="Check for Updates"
               >
                 <RotateCw size={20} />
@@ -79,7 +84,7 @@ const Layout = ({ children }: LayoutProps) => {
       </main>
 
       <Footer />
-      <UpdaterHandler />
+      <UpdaterHandler checkRequestId={updateCheckRequestId} />
     </div>
   )
 }

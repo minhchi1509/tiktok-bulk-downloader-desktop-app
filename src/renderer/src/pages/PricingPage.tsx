@@ -10,11 +10,11 @@ import {
   Copy,
   CreditCard
 } from 'lucide-react'
-import { TechcombankQrImage } from '../assets/images'
 import { useNavigate } from 'react-router-dom'
 import { PaypalIcon } from '@renderer/assets/icons'
 import { useState } from 'react'
 import { EAppRoutes } from '@renderer/constants/route.constant'
+import { TechcombankQrImage } from '@renderer/assets/images'
 
 const CONTACT_EMAIL = 'minhchico300kc@gmail.com'
 const PAYPAL_URL = 'https://paypal.me/minhchi1509'
