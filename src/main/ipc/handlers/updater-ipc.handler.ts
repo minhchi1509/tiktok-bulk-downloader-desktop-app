@@ -28,14 +28,17 @@ export class UpdaterIpcHandler extends BaseIpcDomainHandler implements IIpcDomai
         if (!app.isPackaged) {
           // In dev mode, we might want to log or mock.
           console.log('Skipping update check in dev mode')
-          return
+          return { skipped: true }
         }
-        await this.executeCommand(
-          () => this.updaterService.checkForUpdates(),
-          (error) => {
-            console.error('[UpdaterIpcHandler] checkForUpdates failed:', error)
-          }
-        )
+
+        try {
+          await this.updaterService.checkForUpdates()
+        } catch (error) {
+          console.error('[UpdaterIpcHandler] checkForUpdates failed:', error)
+          throw error
+        }
+
+        return { skipped: false }
       },
 
       downloadUpdate: async () =>

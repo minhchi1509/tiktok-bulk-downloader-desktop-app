@@ -28,6 +28,10 @@ type Rpc<Args extends unknown[] = [], Response = void> = {
   response: Response
 }
 
+export interface ICheckForUpdatesResponse {
+  skipped: boolean
+}
+
 // Single source of truth for all ipcRenderer.invoke/ipcMain.handle methods.
 export interface IpcInvokeContract {
   getAppVersion: Rpc<[], IpcResponse<string>>
@@ -45,7 +49,7 @@ export interface IpcInvokeContract {
   getDefaultDownloadPath: Rpc<[], IpcResponse<string>>
   getSettings: Rpc<[key: string], IpcResponse<unknown>>
   saveSettings: Rpc<[key: string, value: unknown], void>
-  checkForUpdates: Rpc<[], void>
+  checkForUpdates: Rpc<[], ICheckForUpdatesResponse>
   downloadUpdate: Rpc<[], void>
   quitAndInstall: Rpc<[], void>
 }
