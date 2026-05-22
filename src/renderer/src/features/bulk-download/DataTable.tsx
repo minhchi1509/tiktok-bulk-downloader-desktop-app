@@ -8,8 +8,7 @@ import {
 } from '@tanstack/table-core'
 import { flexRender } from '@tanstack/react-table'
 import { FC, memo, useMemo } from 'react'
-import { ChevronUp } from 'lucide-react'
-import TablePagination from '@renderer/components/Pagination'
+import TablePagination from '@renderer/components/ui/Pagination'
 import FormSelect, { TSelectOption } from '@renderer/components/forms/FormSelect'
 import { ITiktokAwemeDetails } from '@minhchi1509/social-media-api/types'
 
@@ -35,69 +34,41 @@ interface ITableFooterProps {
   onPaginationChange: OnChangeFn<PaginationState>
 }
 
-const SortableColumnHeader = ({
-  children,
-  sortDirection
-}: {
-  children: React.ReactNode
-  sortDirection?: 'ascending' | 'descending'
-}) => {
+const TableHeader = ({
+  headers,
+  isAllRowsSelected,
+  isSomeRowsSelected,
+  toggleAllRowsSelected
+}: ITableHeaderProps) => {
   return (
-    <span className="flex items-center justify-between">
-      {children}
-      {!!sortDirection && (
-        <ChevronUp
-          className={cn(
-            'size-3 transform transition-transform duration-300 ease-out',
-            sortDirection === 'descending' ? 'rotate-180' : ''
-          )}
-        />
-      )}
-    </span>
+    <Table.Header className="sticky top-0 z-10">
+      <Table.Column className="pr-0">
+        <Checkbox
+          aria-label="Select all"
+          slot={null}
+          isSelected={isAllRowsSelected}
+          isIndeterminate={isSomeRowsSelected}
+          onChange={(isSelected) => toggleAllRowsSelected(isSelected)}
+        >
+          <Checkbox.Control>
+            <Checkbox.Indicator />
+          </Checkbox.Control>
+        </Checkbox>
+      </Table.Column>
+
+      {headers.map((header) => (
+        <Table.Column
+          isRowHeader={header.id === 'id'}
+          key={header.id}
+          allowsSorting={header.column.getCanSort()}
+          id={header.id}
+        >
+          {flexRender(header.column.columnDef.header, header.getContext())}
+        </Table.Column>
+      ))}
+    </Table.Header>
   )
 }
-
-const TableHeader = memo(
-  ({
-    headers,
-    isAllRowsSelected,
-    isSomeRowsSelected,
-    toggleAllRowsSelected
-  }: ITableHeaderProps) => {
-    return (
-      <Table.Header className="sticky top-0 z-10">
-        <Table.Column className="pr-0">
-          <Checkbox
-            aria-label="Select all"
-            slot={null}
-            isSelected={isAllRowsSelected}
-            isIndeterminate={isSomeRowsSelected}
-            onChange={(isSelected) => toggleAllRowsSelected(isSelected)}
-          >
-            <Checkbox.Control>
-              <Checkbox.Indicator />
-            </Checkbox.Control>
-          </Checkbox>
-        </Table.Column>
-
-        {headers.map((header) => (
-          <Table.Column
-            isRowHeader={header.id === 'id'}
-            key={header.id}
-            allowsSorting={header.column.getCanSort()}
-            id={header.id}
-          >
-            {({ sortDirection }) => (
-              <SortableColumnHeader sortDirection={sortDirection}>
-                {flexRender(header.column.columnDef.header, header.getContext())}
-              </SortableColumnHeader>
-            )}
-          </Table.Column>
-        ))}
-      </Table.Header>
-    )
-  }
-)
 
 const TABLE_PAGE_SIZE_OPTIONS: TSelectOption[] = [
   { label: '10 / page', value: 10 },

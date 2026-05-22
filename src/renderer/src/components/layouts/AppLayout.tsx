@@ -1,17 +1,17 @@
 import { ReactNode, useEffect, useState } from 'react'
 import Footer from './Footer'
-import UpdaterHandler from './UpdaterHandler'
+import UpdaterHandler from '../UpdaterHandler'
 import { Button, Tooltip } from '@heroui/react'
 import { Moon, Sun, RotateCw, CircleDollarSign } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useNavigate } from 'react-router-dom'
 import { EAppRoutes } from '@renderer/constants/route.constant'
 
-interface LayoutProps {
+interface AppLayoutProps {
   children: ReactNode
 }
 
-const Layout = ({ children }: LayoutProps) => {
+const AppLayout = ({ children }: AppLayoutProps) => {
   const { theme, setTheme } = useTheme()
   const navigate = useNavigate()
   const [appVersion, setAppVersion] = useState('')
@@ -89,4 +89,4 @@ const Layout = ({ children }: LayoutProps) => {
   )
 }
 
-export default Layout
+export default AppLayout
