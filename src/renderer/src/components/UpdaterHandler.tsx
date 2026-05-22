@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Modal, Button, useOverlayState } from '@heroui/react'
 import type { UpdateAvailableInfo } from '@shared/types/ipc/ipc-event.type'
-import ProgressBar from '@renderer/components/ProgressBar'
+import ProgressBar from '@renderer/components/ui/ProgressBar'
 
 type UpdateStatus =
   | 'idle'
@@ -36,29 +36,17 @@ const UpdaterHandler = ({ checkRequestId }: UpdaterHandlerProps) => {
   const [progress, setProgress] = useState(0)
   const [updateInfo, setUpdateInfo] = useState<UpdateAvailableInfo | null>(null)
   const statusRef = useRef<UpdateStatus>('idle')
-  const shouldShowModalForCurrentCheckRef = useRef(false)
   const hasStartedStartupCheckRef = useRef(false)
   const lastHandledCheckRequestIdRef = useRef(0)
   const downloadStartedRef = useRef(false)
 
-  const handleOpenChange = useCallback((isOpen: boolean) => {
-    if (!isOpen && statusRef.current !== 'downloading') {
-      shouldShowModalForCurrentCheckRef.current = false
-    }
-  }, [])
-
-  const modalState = useOverlayState({ onOpenChange: handleOpenChange })
+  const modalState = useOverlayState()
   const { open: openModal, close: closeModal } = modalState
 
   const setUpdateStatus = useCallback((nextStatus: UpdateStatus) => {
     statusRef.current = nextStatus
     setStatus(nextStatus)
   }, [])
-
-  const handleCloseModal = useCallback(() => {
-    shouldShowModalForCurrentCheckRef.current = false
-    closeModal()
-  }, [closeModal])
 
   const startUpdateDownload = useCallback(() => {
     if (downloadStartedRef.current) {
@@ -72,21 +60,17 @@ const UpdaterHandler = ({ checkRequestId }: UpdaterHandlerProps) => {
     window.api.downloadUpdate().catch(() => {
       downloadStartedRef.current = false
       setUpdateStatus('error')
-
-      if (shouldShowModalForCurrentCheckRef.current) {
-        openModal()
-      }
     })
   }, [openModal, setUpdateStatus])
 
   const checkForUpdates = useCallback(
     async (mode: CheckMode) => {
-      if (mode === 'visible') {
-        shouldShowModalForCurrentCheckRef.current = true
-        openModal()
-      }
+      const shouldShowModal = mode === 'visible'
 
       if (activeUpdateStatuses.has(statusRef.current)) {
+        if (shouldShowModal) {
+          openModal()
+        }
         return
       }
 
@@ -95,22 +79,18 @@ const UpdaterHandler = ({ checkRequestId }: UpdaterHandlerProps) => {
       setUpdateInfo(null)
       setUpdateStatus('checking')
 
+      if (shouldShowModal) {
+        openModal()
+      }
+
       try {
         const response = await window.api.checkForUpdates()
 
         if (response.skipped && statusRef.current === 'checking') {
           setUpdateStatus('not-available')
-
-          if (shouldShowModalForCurrentCheckRef.current) {
-            openModal()
-          }
         }
       } catch (error) {
         setUpdateStatus('error')
-
-        if (shouldShowModalForCurrentCheckRef.current) {
-          openModal()
-        }
       }
     },
     [openModal, setUpdateStatus]
@@ -127,7 +107,6 @@ const UpdaterHandler = ({ checkRequestId }: UpdaterHandlerProps) => {
       downloadStartedRef.current = false
       setProgress(100)
       setUpdateStatus('ready')
-      shouldShowModalForCurrentCheckRef.current = true
       openModal()
     })
 
@@ -139,10 +118,6 @@ const UpdaterHandler = ({ checkRequestId }: UpdaterHandlerProps) => {
     const removeUpdateError = window.api.onUpdateError(() => {
       downloadStartedRef.current = false
       setUpdateStatus('error')
-
-      if (shouldShowModalForCurrentCheckRef.current) {
-        openModal()
-      }
     })
 
     const removeChecking = window.api.onCheckingForUpdate(() => {
@@ -153,10 +128,6 @@ const UpdaterHandler = ({ checkRequestId }: UpdaterHandlerProps) => {
     const removeNotAvailable = window.api.onUpdateNotAvailable(() => {
       downloadStartedRef.current = false
       setUpdateStatus('not-available')
-
-      if (shouldShowModalForCurrentCheckRef.current) {
-        openModal()
-      }
     })
 
     return () => {
@@ -217,7 +188,7 @@ const UpdaterHandler = ({ checkRequestId }: UpdaterHandlerProps) => {
       body: () => <p>The update has been downloaded. Restart the app to install?</p>,
       footer: () => (
         <>
-          <Button variant="danger" onPress={handleCloseModal}>
+          <Button variant="danger" onPress={() => closeModal()}>
             Later
           </Button>
           <Button variant="primary" onPress={handleInstall}>
@@ -230,7 +201,7 @@ const UpdaterHandler = ({ checkRequestId }: UpdaterHandlerProps) => {
       title: () => 'No Updates Available',
       body: () => <p>You are using the latest version.</p>,
       footer: () => (
-        <Button variant="primary" onPress={handleCloseModal}>
+        <Button variant="primary" onPress={() => closeModal()}>
           OK
         </Button>
       )
@@ -239,7 +210,7 @@ const UpdaterHandler = ({ checkRequestId }: UpdaterHandlerProps) => {
       title: () => 'Update Check Failed',
       body: () => <p>Unable to check for updates right now. Please try again later.</p>,
       footer: () => (
-        <Button variant="primary" onPress={handleCloseModal}>
+        <Button variant="primary" onPress={() => closeModal()}>
           OK
         </Button>
       )
@@ -254,10 +225,10 @@ const UpdaterHandler = ({ checkRequestId }: UpdaterHandlerProps) => {
 
   return (
     <Modal state={modalState}>
-      <Modal.Backdrop isDismissable={status !== 'downloading'} variant="blur">
+      <Modal.Backdrop isDismissable={false} variant="blur">
         <Modal.Container>
           <Modal.Dialog>
-            {status !== 'downloading' && <Modal.CloseTrigger />}
+            <Modal.CloseTrigger />
             <Modal.Header>
               <Modal.Heading>{modalContent?.title()}</Modal.Heading>
             </Modal.Header>

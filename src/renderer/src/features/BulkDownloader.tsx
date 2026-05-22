@@ -27,11 +27,13 @@ import {
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import DownloadOptions from '@renderer/features/bulk-download/DownloadOptions'
-import ColumnWithSearch from '@renderer/components/ColumnWithSearch'
-import ColumnFilter from '@renderer/components/ColumnFilter'
 import dayjs from 'dayjs'
 import DataTable from '@renderer/features/bulk-download/DataTable'
-import ProgressBar from '@renderer/components/ProgressBar'
+import ProgressBar from '@renderer/components/ui/ProgressBar'
+import TableColumnSearch from '@renderer/components/table/TableColumnSearch'
+import TableColumnFilterSelect from '@renderer/components/table/TableColumnFilterSelect'
+import SortableColumnHeader from '@renderer/components/table/SortableColumnHeader'
+import TableDateRangeFilter from '@renderer/components/table/TableDateRangeFilter'
 
 const columnHelper = createColumnHelper<ITiktokAwemeDetails>()
 
@@ -64,8 +66,8 @@ const BulkDownloader = () => {
   // Custom Filter Function
   const customFilterFn: FilterFn<ITiktokAwemeDetails> = (row, columnId, filterValue) => {
     const rowValue = row.getValue(columnId) as string
-    if (!filterValue) return true
-    return String(rowValue).toLowerCase().includes(String(filterValue).toLowerCase())
+    if (!filterValue || filterValue.length === 0) return true
+    return rowValue.toLowerCase().includes((filterValue[0] as string).toLowerCase())
   }
 
   const columns = useMemo(
@@ -73,13 +75,15 @@ const BulkDownloader = () => {
       // Removed manual checkbox column as HeroUI handles it
       columnHelper.accessor('id', {
         id: 'id',
-        header: ({ table }) => (
-          <ColumnWithSearch
-            columnName="ID"
-            searchText={(table.getColumn('id')?.getFilterValue() as string) ?? ''}
-            onSearchChange={(val) => table.getColumn('id')?.setFilterValue(val)}
-            placeholder="Search ID..."
-          />
+        header: ({ column }) => (
+          <div className="flex justify-between w-full">
+            <span>ID</span>
+            <TableColumnSearch
+              placeholder="Search ID..."
+              filteredValue={column.getFilterValue() as string[]}
+              onFilter={(val) => column.setFilterValue(val)}
+            />
+          </div>
         ),
         // Enable column filtering
         filterFn: customFilterFn,
@@ -88,16 +92,18 @@ const BulkDownloader = () => {
       }),
       columnHelper.accessor('contentType', {
         id: 'contentType',
-        header: () => (
-          <ColumnFilter
-            columnName="Content type"
-            options={[
-              { value: 'VIDEO', label: 'Video' },
-              { value: 'MULTI_PHOTO', label: 'Multi photo' }
-            ]}
-            filteredValue={table.getColumn('contentType')?.getFilterValue() as string[]}
-            onFilterChange={(value) => table.getColumn('contentType')?.setFilterValue(value)}
-          />
+        header: ({ column }) => (
+          <div className="flex justify-between w-full">
+            <span>Content Type</span>
+            <TableColumnFilterSelect
+              options={[
+                { value: 'VIDEO', label: 'Video' },
+                { value: 'MULTI_PHOTO', label: 'Multi photo' }
+              ]}
+              filteredValue={column.getFilterValue() as string[]}
+              onFilter={(val) => column.setFilterValue(val)}
+            />
+          </div>
         ),
         filterFn: (row, id, value: string[]) => {
           return value?.includes(row.getValue(id)) || value.length === 0
@@ -130,13 +136,15 @@ const BulkDownloader = () => {
       }),
       columnHelper.accessor('description', {
         id: 'description',
-        header: ({ table }) => (
-          <ColumnWithSearch
-            columnName="Description"
-            searchText={(table.getColumn('description')?.getFilterValue() as string) ?? ''}
-            onSearchChange={(val) => table.getColumn('description')?.setFilterValue(val)}
-            placeholder="Search Description..."
-          />
+        header: ({ column }) => (
+          <div className="flex justify-between w-full">
+            <span>Description</span>
+            <TableColumnSearch
+              placeholder="Search Description..."
+              filteredValue={column.getFilterValue() as string[]}
+              onFilter={(val) => column.setFilterValue(val)}
+            />
+          </div>
         ),
         filterFn: customFilterFn,
         enableSorting: false,
@@ -151,15 +159,47 @@ const BulkDownloader = () => {
       }),
       columnHelper.accessor('createdAt', {
         id: 'createdAt',
-        header: 'Created At',
+        header: ({ column }) => {
+          return (
+            <div className="flex w-full justify-between items-center">
+              <span>Created At</span>
+              <div className="flex gap-1 items-center">
+                <TableDateRangeFilter
+                  filteredValue={column.getFilterValue() as string[]}
+                  onFilter={(val) => column.setFilterValue(val)}
+                />
+                <SortableColumnHeader sortDirection={column.getIsSorted()} />
+              </div>
+            </div>
+          )
+        },
         enableSorting: true,
+        filterFn: (row, columnId, filterValue) => {
+          const rowValue = Number(row.getValue(columnId))
+          if (!filterValue || filterValue.length === 0) return true
+
+          const [startStr, endStr] = filterValue[0].split(',')
+          const startTs = parseInt(startStr, 10)
+          const endTs = parseInt(endStr, 10)
+
+          if (isNaN(startTs) || isNaN(endTs)) return true
+
+          return rowValue >= startTs && rowValue <= endTs
+        },
         cell: (info) => (
           <span>{dayjs.unix(info.getValue() as number).format('DD/MM/YYYY HH:mm:ss')}</span>
         )
       }),
       columnHelper.accessor('statistics.diggCount', {
         id: 'likes',
-        header: 'Likes',
+        header: ({ column }) => {
+          return (
+            <div className="flex w-full justify-between items-center">
+              <span>Likes</span>
+              <SortableColumnHeader sortDirection={column.getIsSorted()} />
+            </div>
+          )
+        },
         enableSorting: true,
         cell: (info) => (
           <span className="text-tiny">❤️ {Number(info.getValue()).toLocaleString()}</span>
@@ -167,7 +207,14 @@ const BulkDownloader = () => {
       }),
       columnHelper.accessor('statistics.commentCount', {
         id: 'comments',
-        header: 'Comments',
+        header: ({ column }) => {
+          return (
+            <div className="flex w-full justify-between items-center">
+              <span>Comments</span>
+              <SortableColumnHeader sortDirection={column.getIsSorted()} />
+            </div>
+          )
+        },
         enableSorting: true,
         cell: (info) => (
           <span className="text-tiny">💬 {Number(info.getValue()).toLocaleString()}</span>
@@ -175,7 +222,14 @@ const BulkDownloader = () => {
       }),
       columnHelper.accessor('statistics.playCount', {
         id: 'views',
-        header: 'Views',
+        header: ({ column }) => {
+          return (
+            <div className="flex w-full justify-between items-center">
+              <span>Views</span>
+              <SortableColumnHeader sortDirection={column.getIsSorted()} />
+            </div>
+          )
+        },
         enableSorting: true,
         cell: (info) => (
           <span className="text-tiny">👁️ {Number(info.getValue()).toLocaleString()}</span>
@@ -183,7 +237,14 @@ const BulkDownloader = () => {
       }),
       columnHelper.accessor('statistics.collectCount', {
         id: 'collects',
-        header: 'Collects',
+        header: ({ column }) => {
+          return (
+            <div className="flex w-full justify-between items-center">
+              <span>Collects</span>
+              <SortableColumnHeader sortDirection={column.getIsSorted()} />
+            </div>
+          )
+        },
         enableSorting: true,
         cell: (info) => (
           <span className="text-tiny">📌 {Number(info.getValue()).toLocaleString()}</span>
