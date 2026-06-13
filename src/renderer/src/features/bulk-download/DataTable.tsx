@@ -1,16 +1,30 @@
-import { Checkbox, cn, EmptyState, SortDescriptor, Table } from '@heroui/react'
+import {
+  Button,
+  Checkbox,
+  cn,
+  EmptyState,
+  NumberField,
+  Popover,
+  SortDescriptor,
+  Table
+} from '@heroui/react'
 import {
   Header as HeaderType,
   OnChangeFn,
   PaginationState,
+  Row,
   SortingState,
   Table as TableType
 } from '@tanstack/table-core'
 import { flexRender } from '@tanstack/react-table'
-import { FC, memo, useMemo } from 'react'
+import { FC, memo, useCallback, useMemo, useState } from 'react'
 import TablePagination from '@renderer/components/ui/Pagination'
-import FormSelect, { TSelectOption } from '@renderer/components/forms/FormSelect'
 import { ITiktokAwemeDetails } from '@minhchi1509/social-media-api/types'
+import { ChevronDown } from 'lucide-react'
+
+// ============================================================
+// Types
+// ============================================================
 
 interface IDataTableProps {
   table: TableType<ITiktokAwemeDetails>
@@ -22,9 +36,12 @@ interface IDataTableProps {
 
 interface ITableHeaderProps {
   headers: HeaderType<ITiktokAwemeDetails, unknown>[]
-  isAllRowsSelected: boolean
-  isSomeRowsSelected: boolean
-  toggleAllRowsSelected: (value: boolean) => void
+  isAllPageRowsSelected: boolean
+  isSomePageRowsSelected: boolean
+  toggleAllPageRowsSelected: (value: boolean) => void
+  onSelectAll: () => void
+  onInvertCurrentPage: () => void
+  onUnselectAll: () => void
 }
 
 interface ITableFooterProps {
@@ -34,26 +51,90 @@ interface ITableFooterProps {
   onPaginationChange: OnChangeFn<PaginationState>
 }
 
+// ============================================================
+// Constants
+// ============================================================
+
+const PRESET_PAGE_SIZES = [10, 20, 50, 100] as const
+
+const MIN_CUSTOM_PAGE_SIZE = 1
+const MAX_CUSTOM_PAGE_SIZE = 500
+
+// ============================================================
+// Sub-components
+// ============================================================
+
 const TableHeader = ({
   headers,
-  isAllRowsSelected,
-  isSomeRowsSelected,
-  toggleAllRowsSelected
+  isAllPageRowsSelected,
+  isSomePageRowsSelected,
+  toggleAllPageRowsSelected,
+  onSelectAll,
+  onInvertCurrentPage,
+  onUnselectAll
 }: ITableHeaderProps) => {
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false)
+
+  const handleSelectionAction = useCallback((action: () => void) => {
+    action()
+    setIsPopoverOpen(false)
+  }, [])
+
   return (
     <Table.Header className="sticky top-0 z-10">
       <Table.Column className="pr-0">
-        <Checkbox
-          aria-label="Select all"
-          slot={null}
-          isSelected={isAllRowsSelected}
-          isIndeterminate={isSomeRowsSelected}
-          onChange={(isSelected) => toggleAllRowsSelected(isSelected)}
-        >
-          <Checkbox.Control>
-            <Checkbox.Indicator />
-          </Checkbox.Control>
-        </Checkbox>
+        <div className="flex items-center gap-0.5">
+          <Checkbox
+            aria-label="Select current page"
+            slot={null}
+            isSelected={isAllPageRowsSelected}
+            isIndeterminate={isSomePageRowsSelected}
+            onChange={(isSelected) => toggleAllPageRowsSelected(isSelected)}
+          >
+            <Checkbox.Control>
+              <Checkbox.Indicator />
+            </Checkbox.Control>
+          </Checkbox>
+
+          <Popover isOpen={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+            <Popover.Trigger>
+              <ChevronDown
+                size={14}
+                className="cursor-pointer text-muted hover:text-foreground transition-colors"
+              />
+            </Popover.Trigger>
+            <Popover.Content placement="bottom start" className="min-w-40">
+              <Popover.Dialog className="p-1">
+                <div className="flex flex-col">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="justify-start w-full"
+                    onPress={() => handleSelectionAction(onSelectAll)}
+                  >
+                    Select all
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="justify-start w-full"
+                    onPress={() => handleSelectionAction(onInvertCurrentPage)}
+                  >
+                    Invert current page
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="justify-start w-full"
+                    onPress={() => handleSelectionAction(onUnselectAll)}
+                  >
+                    Unselect all
+                  </Button>
+                </div>
+              </Popover.Dialog>
+            </Popover.Content>
+          </Popover>
+        </div>
       </Table.Column>
 
       {headers.map((header) => (
@@ -70,15 +151,106 @@ const TableHeader = ({
   )
 }
 
-const TABLE_PAGE_SIZE_OPTIONS: TSelectOption[] = [
-  { label: '10 / page', value: 10 },
-  { label: '20 / page', value: 20 },
-  { label: '50 / page', value: 50 },
-  { label: '100 / page', value: 100 }
-]
+const PageSizeSelector = memo(
+  ({
+    currentPageSize,
+    onPageSizeChange
+  }: {
+    currentPageSize: number
+    onPageSizeChange: (pageSize: number) => void
+  }) => {
+    const [isOpen, setIsOpen] = useState(false)
+    const [customValue, setCustomValue] = useState<number>(currentPageSize)
+
+    const handleSelectPreset = useCallback(
+      (size: number) => {
+        onPageSizeChange(size)
+        setIsOpen(false)
+      },
+      [onPageSizeChange]
+    )
+
+    const handleApplyCustom = useCallback(() => {
+      if (customValue >= MIN_CUSTOM_PAGE_SIZE && customValue <= MAX_CUSTOM_PAGE_SIZE) {
+        onPageSizeChange(customValue)
+        setIsOpen(false)
+      }
+    }, [customValue, onPageSizeChange])
+
+    const displayLabel = `${currentPageSize} / page`
+
+    return (
+      <Popover isOpen={isOpen} onOpenChange={setIsOpen}>
+        <Popover.Trigger>
+          <Button variant="outline" size="sm" className="min-w-36 justify-between">
+            {displayLabel}
+            <ChevronDown size={14} />
+          </Button>
+        </Popover.Trigger>
+        <Popover.Content placement="bottom end" className="w-48">
+          <Popover.Dialog className="p-1">
+            <div className="flex flex-col gap-1">
+              {/* Preset options */}
+              {PRESET_PAGE_SIZES.map((size) => (
+                <Button
+                  key={size}
+                  variant={currentPageSize === size ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="justify-start w-full"
+                  onPress={() => handleSelectPreset(size)}
+                >
+                  {size} / page
+                </Button>
+              ))}
+
+              {/* Separator */}
+              <div className="my-1 border-t border-default" />
+
+              {/* Custom input */}
+              <div className="flex flex-col gap-2 px-2 py-1.5">
+                <span className="text-tiny font-medium text-muted">Custom</span>
+                <NumberField
+                  minValue={MIN_CUSTOM_PAGE_SIZE}
+                  maxValue={MAX_CUSTOM_PAGE_SIZE}
+                  value={customValue}
+                  onChange={(val) => setCustomValue(val)}
+                  aria-label="Custom page size"
+                >
+                  <NumberField.Group>
+                    <NumberField.DecrementButton />
+                    <NumberField.Input className="w-15" />
+                    <NumberField.IncrementButton />
+                  </NumberField.Group>
+                </NumberField>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="w-full"
+                  onPress={handleApplyCustom}
+                  isDisabled={
+                    customValue < MIN_CUSTOM_PAGE_SIZE || customValue > MAX_CUSTOM_PAGE_SIZE
+                  }
+                >
+                  Apply
+                </Button>
+              </div>
+            </div>
+          </Popover.Dialog>
+        </Popover.Content>
+      </Popover>
+    )
+  }
+)
 
 const TableFooter = memo(
   ({ rowCount, totalPages, pagination, onPaginationChange }: ITableFooterProps) => {
+    const handlePageSizeChange = useCallback(
+      (pageSize: number) => {
+        onPaginationChange(() => ({ pageIndex: 0, pageSize }))
+      },
+      [onPaginationChange]
+    )
+
     return (
       <div className="flex justify-between items-center mx-auto">
         <div>Total {rowCount} items</div>
@@ -90,16 +262,18 @@ const TableFooter = memo(
           onPageChange={(pageIndex) => onPaginationChange((prev) => ({ ...prev, pageIndex }))}
         />
 
-        <FormSelect
-          options={TABLE_PAGE_SIZE_OPTIONS}
-          value={pagination.pageSize}
-          onChange={(val) => onPaginationChange(() => ({ pageIndex: 0, pageSize: Number(val) }))}
-          className="w-40"
+        <PageSizeSelector
+          currentPageSize={pagination.pageSize}
+          onPageSizeChange={handlePageSizeChange}
         />
       </div>
     )
   }
 )
+
+// ============================================================
+// Main Component
+// ============================================================
 
 const DataTable: FC<IDataTableProps> = ({
   table,
@@ -128,6 +302,23 @@ const DataTable: FC<IDataTableProps> = ({
       onSortingChange([])
     }
   }
+
+  // Selection handlers matching Ant Design's Table.SELECTION_* behavior
+  const handleSelectAll = useCallback(() => {
+    table.toggleAllRowsSelected(true)
+  }, [table])
+
+  const handleInvertCurrentPage = useCallback(() => {
+    const currentPageRows: Row<ITiktokAwemeDetails>[] = table.getRowModel().rows
+    currentPageRows.forEach((row) => {
+      row.toggleSelected(!row.getIsSelected())
+    })
+  }, [table])
+
+  const handleUnselectAll = useCallback(() => {
+    table.toggleAllRowsSelected(false)
+  }, [table])
+
   return (
     <Table className="my-5 shadow-md rounded-2xl border">
       <Table.ScrollContainer className="max-h-100 overflow-auto">
@@ -138,9 +329,14 @@ const DataTable: FC<IDataTableProps> = ({
         >
           <TableHeader
             headers={table.getHeaderGroups()[0]!.headers}
-            isAllRowsSelected={table.getIsAllRowsSelected()}
-            isSomeRowsSelected={table.getIsSomeRowsSelected()}
-            toggleAllRowsSelected={table.toggleAllRowsSelected}
+            isAllPageRowsSelected={table.getIsAllPageRowsSelected()}
+            isSomePageRowsSelected={
+              table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected()
+            }
+            toggleAllPageRowsSelected={table.toggleAllPageRowsSelected}
+            onSelectAll={handleSelectAll}
+            onInvertCurrentPage={handleInvertCurrentPage}
+            onUnselectAll={handleUnselectAll}
           />
           <Table.Body
             renderEmptyState={() => (
