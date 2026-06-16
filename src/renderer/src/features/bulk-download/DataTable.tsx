@@ -256,7 +256,7 @@ const TableFooter = memo(
         <div>Total {rowCount} items</div>
 
         <TablePagination
-          className="w-auto"
+          className="w-auto mx-4"
           totalPages={totalPages}
           currentPage={pagination.pageIndex}
           onPageChange={(pageIndex) => onPaginationChange((prev) => ({ ...prev, pageIndex }))}

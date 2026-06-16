@@ -101,6 +101,7 @@ jobs:
         timeout-minutes: 10
         env:
           NODE_OPTIONS: --max-old-space-size=8192
+          MAIN_VITE_TOOL_API_URL: ${{ secrets.MAIN_VITE_TOOL_API_URL }}
 
       - name: Package Electron app
         run: bunx electron-builder --${{ matrix.platform }} --publish never

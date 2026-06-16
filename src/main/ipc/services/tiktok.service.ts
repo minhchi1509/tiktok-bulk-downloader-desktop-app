@@ -9,6 +9,7 @@ import type {
 import { IGetUserAwemeListOptions } from '@shared/types/tiktok.type'
 import { ISettingsService } from '@main/ipc/services/settings.service'
 import { EAppSettingKey } from '@shared/constants/enum'
+import axios, { AxiosError } from 'axios'
 
 type GetUserAwemeListArgs = IpcInvokeArgs<'getUserAwemeList'>
 type GetUserInfoArgs = IpcInvokeArgs<'getUserInfo'>
@@ -23,38 +24,68 @@ export interface ITiktokService {
 }
 
 export class TiktokService implements ITiktokService {
-  private tiktokApiService: TiktokMobileApiService
+  private tiktokApiService: TiktokMobileApiService | undefined
 
-  constructor(private readonly settingsService: ISettingsService) {
-    this.tiktokApiService = new TiktokMobileApiService({
-      getCredentialsBeforeRequest: async () => {
-        const sidTt = await this.settingsService.get<string>(EAppSettingKey.API_SECRET_KEY)
-        return {
-          mobileAppCookie: `sid_tt=${sidTt}`,
-          deviceId: '7631568362263561749',
-          installId: '7631570938534954772'
+  constructor(private readonly settingsService: ISettingsService) {}
+
+  private getTiktokMobileApiService = async (): Promise<TiktokMobileApiService> => {
+    if (!this.tiktokApiService) {
+      const credentials = await this.getTiktokMobileCredentials()
+      this.tiktokApiService = new TiktokMobileApiService({
+        credentials: {
+          mobileAppCookie: credentials.cookies,
+          deviceId: credentials.deviceId,
+          installId: credentials.installId
         }
-      }
-    })
+      })
+    }
+    return this.tiktokApiService
+  }
+
+  private getTiktokMobileCredentials = async () => {
+    try {
+      const apiKey = await this.settingsService.get<string>(EAppSettingKey.API_SECRET_KEY)
+
+      const { data: responseData } = await axios.get(
+        `${import.meta.env.MAIN_VITE_TOOL_API_URL}/tiktok/credentials`,
+        {
+          headers: {
+            'x-api-key': apiKey || ''
+          }
+        }
+      )
+      return responseData as { cookies: string; deviceId: string; installId: string }
+    } catch (error) {
+      const err = error as AxiosError
+      const errorData = err.response?.data
+      const errorMessage = (errorData as any)?.message || err.message || 'Unknown error'
+      throw new Error(errorMessage)
+    }
   }
 
   public async getUserAwemeList(options: IGetUserAwemeListOptions) {
     const { secUid, maxCursor, minCursor } = options
-    const responseData = await this.tiktokApiService.getUserAwemeList({
-      secUid,
-      maxCursor,
-      minCursor
-    })
+    const tiktokMobileApiService = await this.getTiktokMobileApiService()
+    const responseData = await tiktokMobileApiService.getUserAwemeList(
+      {
+        secUid,
+        maxCursor,
+        minCursor
+      },
+      { maxRetries: 15, retryDelayMs: 1000 }
+    )
     return responseData
   }
 
   public async getUserInfo(username: string) {
-    const responseData = await this.tiktokApiService.getProfileDetails(username)
+    const tiktokMobileApiService = await this.getTiktokMobileApiService()
+    const responseData = await tiktokMobileApiService.getProfileDetails(username)
     return responseData
   }
 
   public async getMultiAwemeDetails(awemeIds: string[]) {
-    const responseData = await this.tiktokApiService.getMultipleAwemeDetails(awemeIds)
+    const tiktokMobileApiService = await this.getTiktokMobileApiService()
+    const responseData = await tiktokMobileApiService.getMultipleAwemeDetails(awemeIds)
     return responseData
   }
 }
