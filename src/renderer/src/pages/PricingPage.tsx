@@ -23,6 +23,7 @@ const PLAN_FEATURES = [
   'Bulk download TikTok videos & photos',
   'Multi-URL batch download',
   'High-speed concurrent downloads',
+  'Support for downloading videos added to Tiktok shop cart',
   'All filename format options',
   'Priority support via email'
 ]
@@ -69,7 +70,7 @@ const PricingPage = () => {
       </div>
 
       {/* Pricing Card */}
-      <Card className="max-w-md mx-auto mb-10 border-2 border-blue-500/30 dark:border-cyan-500/30 relative overflow-visible">
+      <Card className="max-w-125 mx-auto mb-10 border-2 border-blue-500/30 dark:border-cyan-500/30 relative overflow-visible">
         {/* Popular Badge */}
         <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
           <Chip color="accent" variant="primary" size="sm" className="font-bold shadow-lg">
@@ -107,7 +108,7 @@ const PricingPage = () => {
           {/* CTA */}
           <div className="flex items-center justify-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
             <Shield size={14} />
-            <span>Secure payment · Cancel anytime</span>
+            <span>Secure payment</span>
           </div>
         </Card.Content>
       </Card>
