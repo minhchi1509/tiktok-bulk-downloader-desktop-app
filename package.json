@@ -38,7 +38,7 @@
     "@heroui/styles": "^3.2.0",
     "@hookform/resolvers": "^5.4.0",
     "@internationalized/date": "^3.12.2",
-    "@minhchi1509/social-media-api": "^1.0.46",
+    "@minhchi1509/social-media-api": "^1.0.47",
     "@tanstack/react-table": "^8.21.3",
     "axios": "^1.18.0",
     "clsx": "^2.1.1",

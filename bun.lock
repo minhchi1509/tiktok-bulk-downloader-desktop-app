@@ -11,7 +11,7 @@
         "@heroui/styles": "^3.2.0",
         "@hookform/resolvers": "^5.4.0",
         "@internationalized/date": "^3.12.2",
-        "@minhchi1509/social-media-api": "^1.0.46",
+        "@minhchi1509/social-media-api": "^1.0.47",
         "@tanstack/react-table": "^8.21.3",
         "axios": "^1.18.0",
         "clsx": "^2.1.1",
@@ -256,7 +256,7 @@
 
     "@malept/flatpak-bundler": ["@malept/flatpak-bundler@0.4.0", "", { "dependencies": { "debug": "^4.1.1", "fs-extra": "^9.0.0", "lodash": "^4.17.15", "tmp-promise": "^3.0.2" } }, "sha512-9QOtNffcOF/c1seMCDnjckb3R9WHcG34tky+FHpNKKCW0wc/scYLwMtO+ptyGUfMW0/b/n4qRiALlaFHc9Oj7Q=="],
 
-    "@minhchi1509/social-media-api": ["@minhchi1509/social-media-api@1.0.46", "", { "dependencies": { "axios": "^1.16.0", "md5": "^2.3.0" } }, "sha512-pCnUhcoovSZVMn4YVGfYAaCb5cQ6fGQr6uCa+hL931yJXHOpjshtOkuW8N8Vv29Qkro/o6xZA0ZMTSp4qJwHkw=="],
+    "@minhchi1509/social-media-api": ["@minhchi1509/social-media-api@1.0.47", "", { "dependencies": { "axios": "^1.18.0", "md5": "^2.3.0" } }, "sha512-7JjD9WoFYIzWo9+wYwn7QmLGHkpzQmgoes3akYo07AXAm6KBmurUSCngTBwbQ9jVCP2H0Knj82MfQ+Sl/hNx/g=="],
 
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@1.1.4", "", { "dependencies": { "@tybys/wasm-util": "^0.10.1" }, "peerDependencies": { "@emnapi/core": "^1.7.1", "@emnapi/runtime": "^1.7.1" } }, "sha512-3NQNNgA1YSlJb/kMH1ildASP9HW7/7kYnRI2szWJaofaS1hWmbGI4H+d3+22aGzXXN9IJ+n+GiFVcGipJP18ow=="],
 
