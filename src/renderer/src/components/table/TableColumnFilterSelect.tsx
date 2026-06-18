@@ -26,29 +26,27 @@ const TableColumnFilterSelect: FC<ITableColumnFilterSelectProps> = ({
               const isChecked = selectedValues.includes(option.value) ?? false
 
               return (
-                <label
-                  htmlFor={`form-${option.value}`}
+                <Checkbox
                   key={option.value}
+                  id={`form-${option.value}`}
+                  slot={null}
+                  variant="secondary"
+                  value={option.value}
+                  isSelected={isChecked}
                   className={cn(
-                    'flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md cursor-pointer px-2 py-1 duration-300',
+                    'hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md cursor-pointer px-2 py-1 duration-300',
                     isChecked &&
                       'bg-blue-200/75 hover:bg-blue-200 dark:bg-blue-600/50 dark:hover:bg-blue-600/60'
                   )}
+                  onChange={(isSelected) => {
+                    if (isSelected) {
+                      setSelectedValues([...selectedValues, option.value])
+                    } else {
+                      setSelectedValues(selectedValues.filter((val) => val !== option.value))
+                    }
+                  }}
                 >
-                  <Checkbox
-                    id={`form-${option.value}`}
-                    slot={null}
-                    variant="secondary"
-                    value={option.value}
-                    isSelected={isChecked}
-                    onChange={(isSelected) => {
-                      if (isSelected) {
-                        setSelectedValues([...selectedValues, option.value])
-                      } else {
-                        setSelectedValues(selectedValues.filter((val) => val !== option.value))
-                      }
-                    }}
-                  >
+                  <Checkbox.Content className="w-full">
                     <Checkbox.Control
                       className={cn(
                         'bg-transparent',
@@ -57,13 +55,11 @@ const TableColumnFilterSelect: FC<ITableColumnFilterSelectProps> = ({
                     >
                       <Checkbox.Indicator />
                     </Checkbox.Control>
-                  </Checkbox>
-                  <Checkbox.Content>
                     <span className="text-black/70 dark:text-white font-medium">
                       {option.label}
                     </span>
                   </Checkbox.Content>
-                </label>
+                </Checkbox>
               )
             })}
           </div>
