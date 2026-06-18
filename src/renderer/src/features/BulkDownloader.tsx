@@ -150,10 +150,17 @@ const BulkDownloader = () => {
         enableSorting: false,
         cell: (info) => (
           <Tooltip delay={0}>
-            <Tooltip.Trigger>
-              <div className="w-40 truncate text-tiny cursor-default">{info.getValue()}</div>
-            </Tooltip.Trigger>
-            <Tooltip.Content>{info.getValue()}</Tooltip.Content>
+            <span
+              role="button"
+              tabIndex={0}
+              className="block w-40 truncate text-tiny cursor-default"
+            >
+              {info.getValue()}
+            </span>
+            <Tooltip.Content className="max-w-80" showArrow>
+              <Tooltip.Arrow />
+              {info.getValue()}
+            </Tooltip.Content>
           </Tooltip>
         )
       }),

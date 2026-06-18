@@ -91,9 +91,11 @@ const TableHeader = ({
             isIndeterminate={isSomePageRowsSelected}
             onChange={(isSelected) => toggleAllPageRowsSelected(isSelected)}
           >
-            <Checkbox.Control>
-              <Checkbox.Indicator />
-            </Checkbox.Control>
+            <Checkbox.Content>
+              <Checkbox.Control>
+                <Checkbox.Indicator />
+              </Checkbox.Control>
+            </Checkbox.Content>
           </Checkbox>
 
           <Popover isOpen={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
@@ -355,9 +357,11 @@ const DataTable: FC<IDataTableProps> = ({
                     isSelected={row.getIsSelected()}
                     onChange={(isSelected) => row.toggleSelected(isSelected)}
                   >
-                    <Checkbox.Control>
-                      <Checkbox.Indicator />
-                    </Checkbox.Control>
+                    <Checkbox.Content>
+                      <Checkbox.Control>
+                        <Checkbox.Indicator />
+                      </Checkbox.Control>
+                    </Checkbox.Content>
                   </Checkbox>
                 </Table.Cell>
                 {row.getVisibleCells().map((cell) => (
