@@ -150,14 +150,13 @@ const BulkDownloader = () => {
         enableSorting: false,
         cell: (info) => (
           <Tooltip delay={0}>
-            <span
-              role="button"
-              tabIndex={0}
-              className="block w-40 truncate text-tiny cursor-default"
+            <Button
+              variant="ghost"
+              className="w-40 justify-start p-0 h-auto min-h-0 font-normal cursor-default hover:bg-transparent"
             >
-              {info.getValue()}
-            </span>
-            <Tooltip.Content className="max-w-80" showArrow>
+              <span className="truncate">{info.getValue()}</span>
+            </Button>
+            <Tooltip.Content className="max-w-80 text-sm" showArrow placement="right">
               <Tooltip.Arrow />
               {info.getValue()}
             </Tooltip.Content>
@@ -208,9 +207,7 @@ const BulkDownloader = () => {
           )
         },
         enableSorting: true,
-        cell: (info) => (
-          <span className="text-tiny">❤️ {Number(info.getValue()).toLocaleString()}</span>
-        )
+        cell: (info) => <span>❤️ {Number(info.getValue()).toLocaleString()}</span>
       }),
       columnHelper.accessor('statistics.commentCount', {
         id: 'comments',
@@ -223,9 +220,7 @@ const BulkDownloader = () => {
           )
         },
         enableSorting: true,
-        cell: (info) => (
-          <span className="text-tiny">💬 {Number(info.getValue()).toLocaleString()}</span>
-        )
+        cell: (info) => <span>💬 {Number(info.getValue()).toLocaleString()}</span>
       }),
       columnHelper.accessor('statistics.playCount', {
         id: 'views',
@@ -238,9 +233,7 @@ const BulkDownloader = () => {
           )
         },
         enableSorting: true,
-        cell: (info) => (
-          <span className="text-tiny">👁️ {Number(info.getValue()).toLocaleString()}</span>
-        )
+        cell: (info) => <span>👁️ {Number(info.getValue()).toLocaleString()}</span>
       }),
       columnHelper.accessor('statistics.collectCount', {
         id: 'collects',
@@ -253,9 +246,7 @@ const BulkDownloader = () => {
           )
         },
         enableSorting: true,
-        cell: (info) => (
-          <span className="text-tiny">📌 {Number(info.getValue()).toLocaleString()}</span>
-        )
+        cell: (info) => <span>📌 {Number(info.getValue()).toLocaleString()}</span>
       })
     ],
     []

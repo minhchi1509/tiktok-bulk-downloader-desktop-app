@@ -184,7 +184,11 @@ const PageSizeSelector = memo(
     return (
       <Popover isOpen={isOpen} onOpenChange={setIsOpen}>
         <Popover.Trigger>
-          <Button variant="outline" size="sm" className="min-w-36 justify-between">
+          <Button
+            variant="outline"
+            size="sm"
+            className="min-w-36 justify-between border-zinc-300 dark:border-zinc-700"
+          >
             {displayLabel}
             <ChevronDown size={14} />
           </Button>
@@ -210,7 +214,7 @@ const PageSizeSelector = memo(
 
               {/* Custom input */}
               <div className="flex flex-col gap-2 px-2 py-1.5">
-                <span className="text-tiny font-medium text-muted">Custom</span>
+                <span className="font-medium text-muted">Custom</span>
                 <NumberField
                   minValue={MIN_CUSTOM_PAGE_SIZE}
                   maxValue={MAX_CUSTOM_PAGE_SIZE}
