@@ -12,7 +12,7 @@ import {
   PaginationState
 } from '@tanstack/react-table'
 import { useState, useMemo, useRef, useCallback } from 'react'
-import { promisePool } from '@shared/utils/common.util'
+import { promisePool, removeUrlQueryParams } from '@shared/utils/common.util'
 import { Download, StopCircle, ExternalLink, AlertCircle } from 'lucide-react'
 import tiktokUtils, { TFileNameFormatOption } from '@shared/utils/tiktok.util'
 import { showErrorToast } from '@renderer/lib/utils/toast'
@@ -34,6 +34,7 @@ import TableColumnSearch from '@renderer/components/table/TableColumnSearch'
 import TableColumnFilterSelect from '@renderer/components/table/TableColumnFilterSelect'
 import SortableColumnHeader from '@renderer/components/table/SortableColumnHeader'
 import TableDateRangeFilter from '@renderer/components/table/TableDateRangeFilter'
+import CopyButton from '@renderer/components/CopyButton'
 
 const columnHelper = createColumnHelper<ITiktokAwemeDetails>()
 
@@ -149,10 +150,10 @@ const BulkDownloader = () => {
         filterFn: customFilterFn,
         enableSorting: false,
         cell: (info) => (
-          <Tooltip delay={0}>
+          <Tooltip delay={0} closeDelay={0}>
             <Button
               variant="ghost"
-              className="w-40 justify-start p-0 h-auto min-h-0 font-normal cursor-default hover:bg-transparent"
+              className="w-fit max-w-40 justify-start p-0 h-auto min-h-0 font-normal cursor-default hover:bg-transparent"
             >
               <span className="truncate">{info.getValue()}</span>
             </Button>
@@ -504,21 +505,21 @@ const BulkDownloader = () => {
               <AlertCircle size={16} />
               <span className="font-bold text-small">Failed Downloads ({failedItems.length})</span>
             </div>
-            <ScrollShadow
-              className="h-30 w-full border border-danger-200 rounded-lg p-2 bg-danger-50 dark:bg-danger-900/20"
-              visibility="none"
-            >
-              <div className="flex flex-col gap-2">
-                {failedItems.map((item, idx) => (
-                  <div
-                    key={`${item.id}-${idx}`}
-                    className="font-bold text-danger-600 dark:text-danger-400 font-mono"
-                  >
-                    <span>{idx + 1}</span>. {item.id}
-                  </div>
-                ))}
-              </div>
-            </ScrollShadow>
+            <div className="relative">
+              <ScrollShadow className="h-30 w-full border rounded-lg p-2" visibility="none">
+                <div className="flex flex-col">
+                  {failedItems.map((item, idx) => (
+                    <div key={`${item.id}-${idx}`}>{removeUrlQueryParams(item.url)}</div>
+                  ))}
+                </div>
+              </ScrollShadow>
+              <CopyButton
+                textToCopy={failedItems.map((item) => removeUrlQueryParams(item.url)).join('\n')}
+                buttonProps={{
+                  className: 'absolute top-0 right-2'
+                }}
+              />
+            </div>
           </div>
         )}
       </div>

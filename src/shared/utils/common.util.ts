@@ -23,3 +23,13 @@ export async function promisePool<T>({
 
   await Promise.all(workers)
 }
+
+export const removeUrlQueryParams = (url: string): string => {
+  try {
+    const parsedUrl = new URL(url)
+    parsedUrl.search = '' // Remove query parameters
+    return parsedUrl.toString()
+  } catch (error) {
+    return url // Return original URL if it's invalid
+  }
+}

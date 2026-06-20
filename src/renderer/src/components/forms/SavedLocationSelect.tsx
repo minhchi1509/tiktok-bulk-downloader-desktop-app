@@ -1,4 +1,4 @@
-import { FieldError, InputGroup, Label, TextField, TextFieldProps, Tooltip } from '@heroui/react'
+import { FieldError, InputGroup, Label, TextField, TextFieldProps } from '@heroui/react'
 import { FolderOpen } from 'lucide-react'
 import { FC, useEffect } from 'react'
 
@@ -31,21 +31,16 @@ const SavedLocationSelect: FC<ISavedLocationSelectProps> = ({
   }, [])
 
   return (
-    <Tooltip delay={0} isDisabled={!folderPath}>
-      <TextField value={folderPath} isReadOnly isRequired {...props}>
-        <Label>Save location</Label>
-        <InputGroup variant="secondary">
-          <Tooltip.Trigger className="grow">
-            <InputGroup.Input className="truncate w-full" />
-          </Tooltip.Trigger>
-          <InputGroup.Suffix>
-            <FolderOpen size={16} className="cursor-pointer" onClick={handleSelectFolder} />
-          </InputGroup.Suffix>
-        </InputGroup>
-        <FieldError>{errorMessage}</FieldError>
-      </TextField>
-      <Tooltip.Content placement="top">{folderPath}</Tooltip.Content>
-    </Tooltip>
+    <TextField value={folderPath} isReadOnly isRequired {...props}>
+      <Label>Save location</Label>
+      <InputGroup variant="secondary">
+        <InputGroup.Input className="truncate w-full" />
+        <InputGroup.Suffix>
+          <FolderOpen size={16} className="cursor-pointer" onClick={handleSelectFolder} />
+        </InputGroup.Suffix>
+      </InputGroup>
+      <FieldError>{errorMessage}</FieldError>
+    </TextField>
   )
 }
 

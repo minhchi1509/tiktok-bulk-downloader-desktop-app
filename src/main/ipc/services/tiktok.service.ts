@@ -32,11 +32,7 @@ export class TiktokService implements ITiktokService {
     if (!this.tiktokApiService) {
       const credentials = await this.getTiktokMobileCredentials()
       this.tiktokApiService = new TiktokMobileApiService({
-        credentials: {
-          mobileAppCookie: credentials.cookies,
-          deviceId: credentials.deviceId,
-          installId: credentials.installId
-        }
+        credentials
       })
     }
     return this.tiktokApiService
@@ -54,7 +50,7 @@ export class TiktokService implements ITiktokService {
           }
         }
       )
-      return responseData as { cookies: string; deviceId: string; installId: string }
+      return responseData
     } catch (error) {
       const err = error as AxiosError
       const errorData = err.response?.data

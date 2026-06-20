@@ -47,7 +47,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         </div>
 
         <div className="flex items-center gap-2 z-10 app-no-drag">
-          <Tooltip delay={0}>
+          <Tooltip delay={0} closeDelay={0}>
             <Tooltip.Trigger>
               <Button
                 onClick={() => navigate(EAppRoutes.PRICING)}
@@ -60,7 +60,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
             </Tooltip.Trigger>
             <Tooltip.Content>Pricing</Tooltip.Content>
           </Tooltip>
-          <Tooltip delay={0}>
+          <Tooltip delay={0} closeDelay={0}>
             <Tooltip.Trigger>
               <Button
                 isIconOnly
