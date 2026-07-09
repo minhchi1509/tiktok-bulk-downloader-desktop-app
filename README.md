@@ -1,10 +1,10 @@
 # Tiktok Bulk Downloader Desktop App: Tải hàng loạt ảnh, video của người dùng Tiktok bằng 1 click
 
-## Download
+## Tải và cài đặt
 
-Download the latest version from [Releases](https://github.com/minhchi1509/tiktok-bulk-downloader-desktop-app/releases).
+Tải phiên bản mới nhất tại đây: [Releases](https://github.com/minhchi1509/tiktok-bulk-downloader-desktop-app/releases).
 
-| Platform | File                                     |
+| Nền tảng | File                                     |
 | -------- | ---------------------------------------- |
 | Windows  | `tiktok-bulk-downloader-x.x.x-setup.exe` |
 | Linux    | `tiktok-bulk-downloader-x.x.x.AppImage`  |
