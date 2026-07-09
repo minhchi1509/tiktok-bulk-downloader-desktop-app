@@ -1,6 +1,4 @@
-# Tiktok Bulk Downloader Desktop App
-
-A desktop application for downloading multiple TikTok videos at once.
+# Tiktok Bulk Downloader Desktop App: Tải hàng loạt ảnh, video của người dùng Tiktok bằng 1 click
 
 ## Download
 
@@ -9,34 +7,17 @@ Download the latest version from [Releases](https://github.com/minhchi1509/tikto
 | Platform | File                                     |
 | -------- | ---------------------------------------- |
 | Windows  | `tiktok-bulk-downloader-x.x.x-setup.exe` |
-| macOS    | `tiktok-bulk-downloader-x.x.x.dmg`       |
 | Linux    | `tiktok-bulk-downloader-x.x.x.AppImage`  |
 
-## Installation Notes
+## Các tính năng chính của app
+- Tải hàng loạt ảnh, video của một người dùng Tiktok.
+- Hỗ trợ custom thư mục tải xuống, cấu hình tên file, số lượng tải đồng thời.
+- Hỗ trợ lọc theo ID, Mô tả, Content type (video/photo), ngày tạo.
+- Hỗ trợ sắp xếp theo lượt likes, comments, views.
+- Phân trang linh hoạt giúp tải xuống video theo số lượng nhất định.
+- Hỗ trợ tải theo nhiều URL cùng 1 lúc.
+- Hỗ trợ tải video gán giỏ hàng Tiktok shop.
+- Tốc độ tải được tối ưu hóa.
+- Chế độ light/dark mode, đa ngôn ngữ, tự động check bản cập nhật mới.
 
-### macOS
-
-> ⚠️ **Important:** Since this app is not signed with an Apple Developer certificate, macOS may show a warning: **"Tiktok Bulk Downloader" is damaged and can't be opened.**
-
-**To fix this, run the following command in Terminal after installing:**
-
-```bash
-xattr -cr /Applications/Tiktok\ Bulk\ Downloader.app
-```
-
-Or if you installed it elsewhere:
-
-```bash
-xattr -cr /path/to/Tiktok\ Bulk\ Downloader.app
-```
-
-Then open the app again.
-
-### Linux
-
-Make the AppImage executable before running:
-
-```bash
-chmod +x tiktok-bulk-downloader-x.x.x.AppImage
-./tiktok-bulk-downloader-x.x.x.AppImage
-```
+## Giá: 99.000đ/tháng
