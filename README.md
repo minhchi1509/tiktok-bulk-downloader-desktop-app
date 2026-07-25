@@ -20,4 +20,7 @@ Tải phiên bản mới nhất tại đây: [Releases](https://github.com/minhc
 - Tốc độ tải được tối ưu hóa.
 - Chế độ light/dark mode, đa ngôn ngữ, tự động check bản cập nhật mới.
 
-## Giá: 99.000đ/tháng
+## Giá:
+- Gói **Pro**: 10.000 credits/tháng (100k)
+- Gói **Premium**: 35.000 credits/tháng (300k)
+- Gói **Ultra**: 120.000 credits/tháng (900k)
