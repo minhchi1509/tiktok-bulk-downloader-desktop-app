@@ -21,6 +21,9 @@ Tải phiên bản mới nhất tại đây: [Releases](https://github.com/minhc
 - Chế độ light/dark mode, đa ngôn ngữ, tự động check bản cập nhật mới.
 
 ## Giá:
-- Gói **Pro**: 10.000 credits/tháng (100k)
-- Gói **Premium**: 35.000 credits/tháng (300k)
-- Gói **Ultra**: 120.000 credits/tháng (900k)
+- Gói **Starter**: 10.000 credits (119.000đ)
+- Gói **Pro**: 35.000 credits/tháng (349.000đ)
+- Gói **Premium**: 100.000 credits (799.000đ)
+- Gói **Business**: 250.000 credits (1.699.000đ)
+- Gói **Elite**: 400.000 credits (2.499.000đ)
+- Gói **Ultimate**: 600.000 credits (3.499.000đ)
