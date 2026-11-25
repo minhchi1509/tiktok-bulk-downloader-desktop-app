@@ -21,6 +21,9 @@ Tải phiên bản mới nhất tại đây: [Releases](https://github.com/minhc
 - Chế độ light/dark mode, đa ngôn ngữ, tự động check bản cập nhật mới.
 
 ## Giá:
+> [!NOTE]  
+> Quy đổi: 1 ảnh/video lấy được tính là 1 credits
+
 - Gói **Starter**: 10.000 credits (119.000đ)
 - Gói **Pro**: 35.000 credits (349.000đ)
 - Gói **Premium**: 100.000 credits (799.000đ)
